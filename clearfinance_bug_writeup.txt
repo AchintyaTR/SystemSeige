@@ -1,0 +1,204 @@
+ClearFinance (System Siege PS-002) — Bug Writeup
+Repo: https://github.com/AchintyaTR/SystemSeige
+==================================================================
+
+BUG 1: Wildcard CORS + SameSite=None cookies enable cross-origin
+credential abuse (CSRF)
+------------------------------------------------------------------
+Severity: SL-1 (Critical)
+Location: backend/main.py, backend/routers/auth.py
+
+Description:
+CORS is configured with:
+    allow_origin_regex=r"https://.*\.vercel\.app"
+    allow_credentials=True
+The login/logout cookie is set with:
+    samesite="none"
+    secure=True
+
+Vercel hands out free subdomains (*.vercel.app) to anyone. Because
+the CORS regex trusts the entire vercel.app domain and credentials
+are allowed, any attacker can deploy a page on their own
+attacker.vercel.app and issue authenticated fetch() calls against
+this API. The browser will attach the victim's httpOnly JWT cookie
+automatically (SameSite=None permits this cross-site). This lets an
+attacker silently trigger state-changing requests as the logged-in
+victim — e.g. PUT /api/profile, POST /api/expenses, POST /api/goals.
+
+Fix idea:
+- Do not whitelist a whole public hosting domain. Pin the exact
+  deployed frontend origin(s) explicitly (e.g. https://sys-rose.vercel.app)
+  instead of a regex matching all of *.vercel.app.
+- Change cookie SameSite to "strict" or "lax" if the frontend and
+  backend can be brought under a shared site/proxy; if cross-site
+  cookies are unavoidable, add CSRF-token double-submit protection
+  on top of SameSite=None.
+- Consider gating state-changing endpoints with an additional
+  anti-CSRF header check (e.g. custom header that simple cross-site
+  forms/fetches can't set without triggering a preflight your CORS
+  policy rejects).
+
+
+BUG 2: EMI amount is double-counted in the Financial Health Score
+------------------------------------------------------------------
+Severity: SL-2 (Moderate)
+Location: backend/routers/profile.py (compute_health_score),
+          backend/routers/expenses.py
+
+Description:
+The README instructs users to "manually log your monthly EMI
+payments in the tracker" to reduce total_debt. expenses.py already
+special-cases category == "EMI" and deducts it from profile.total_debt.
+However, compute_health_score() is called with:
+    total_outflow = current_month_expenses + emi
+where current_month_expenses is pulled from the Expense table
+(which includes any EMI entries logged that month) AND emi is the
+separate profile.emi_amount field. Any user who logs their EMI in
+the tracker as instructed has that EMI amount counted twice toward
+their outflow, incorrectly tanking their health score.
+
+Fix idea:
+- Pick one source of truth for EMI: either (a) exclude
+  category == "EMI" rows from current_month_expenses before adding
+  profile.emi_amount, or (b) drop the separate emi_amount field and
+  derive EMI outflow purely from logged Expense rows.
+- Add a unit test asserting that logging one EMI expense changes
+  total_outflow by exactly that amount, not double.
+
+
+BUG 3: Profile-declared fixed expenses are collected but never used
+------------------------------------------------------------------
+Severity: SL-2 / SL-3 (borderline — real feature dead code)
+Location: backend/routers/profile.py, backend/schemas.py
+
+Description:
+ProfileUpdateSchema / the FinancialProfile model store
+expense_rent, expense_food, expense_transport, expense_medical, and
+expense_other. Users can fill these in via the profile form, but
+compute_health_score() never reads any of them — only
+current_month_expenses (from the Expense/tracker table) is used.
+The fields are silently ignored, so a user who fills in fixed
+monthly expenses on their profile sees no effect on their score.
+
+Fix idea:
+- Include the profile's fixed expense fields in the outflow
+  calculation, e.g.:
+    fixed_expenses = expense_rent + expense_food + expense_transport
+                      + expense_medical + expense_other
+    total_outflow = fixed_expenses + current_month_expenses + emi
+  (while making sure this doesn't reintroduce double-counting with
+  Bug 2 if a user also logs the same costs in the tracker).
+- Alternatively, if these fields are meant to be superseded by the
+  tracker, remove them from the schema/UI to avoid a misleading
+  "this does nothing" input.
+
+
+BUG 4: EMI expense create/delete cycle can inflate total_debt
+------------------------------------------------------------------
+Severity: SL-2 (Moderate)
+Location: backend/routers/expenses.py
+
+Description:
+On create (category == "EMI"):
+    profile.total_debt = max(0.0, profile.total_debt - expense.amount)
+On delete (category == "EMI"):
+    profile.total_debt += expense.amount
+
+If a user logs an EMI expense larger than their current total_debt,
+the create path clamps the result at 0.0 (correct, can't go
+negative). But the delete path unconditionally adds the full
+expense.amount back, with no symmetric clamp. Creating a large EMI
+expense (clamped to 0) and then deleting it inflates total_debt by
+the full original amount rather than reversing only what was
+actually deducted, producing an incorrect and exploitable debt
+value.
+
+Fix idea:
+- Store the actual amount that was deducted on the expense record
+  (or track "amount_applied_to_debt") at creation time, and use that
+  stored value (not expense.amount) when reversing on delete.
+- Alternatively, recompute total_debt from a running ledger of EMI
+  transactions rather than mutating a single stored counter
+  in-place.
+
+
+BUG 5: OCR fallback for scanned PDFs is a no-op
+------------------------------------------------------------------
+Severity: SL-3 (Low — misleading documentation / incomplete feature)
+Location: backend/routers/loans.py (extract_text_from_pdf)
+
+Description:
+The function detects when extracted text is too short (< 50 chars)
+and logs "Falling back to OCR," but the actual OCR call is just:
+    try:
+        pass
+    except Exception as e:
+        ...
+No OCR is performed. The README and requirements (pytesseract,
+Tesseract-OCR, poppler-utils) all imply scanned/image-based PDF
+support, but scanned loan documents will silently fail extraction
+with "Could not extract text from document." This matches the
+rulebook's SL-3 example of "README claims support for a flow that
+is not actually available."
+
+Fix idea:
+- Implement the OCR path: rasterize PDF pages (e.g. via
+  pdf2image/poppler) and run pytesseract.image_to_string() on each
+  page image, concatenating results into `text`.
+- Until implemented, update the README/error message to say scanned
+  PDFs aren't yet supported, so the documented behavior matches
+  reality.
+
+
+BUG 6: Duplicate /logout route definition
+------------------------------------------------------------------
+Severity: SL-3 (Low — code quality / clarity)
+Location: backend/routers/auth.py
+
+Description:
+The `logout` endpoint is defined twice with identical bodies:
+    @router.post("/logout")
+    def logout(...): ...
+    @router.post("/logout")
+    def logout(...): ...
+FastAPI/Python silently lets the second definition win; there's no
+functional break today, but it's dead/duplicated code that would
+likely be flagged for engineering clarity in review, and any future
+edit to one copy but not the other would create a real
+inconsistency bug.
+
+Fix idea:
+- Delete the duplicate function definition.
+
+
+BUG 7 (related to Bug 1): Bearer-token fallback widens auth attack
+surface
+------------------------------------------------------------------
+Severity: SL-3 (Low standalone, but compounds Bug 1)
+Location: backend/auth.py (get_current_user)
+
+Description:
+get_current_user() first checks the httpOnly cookie, but falls back
+to reading a raw `Authorization: Bearer <token>` header "for
+testing/swagger." This fallback ships in production code. If a
+token is ever obtained through another channel (e.g. via the CSRF
+issue in Bug 1, or a future XSS), it can be replayed directly as a
+header from any origin, completely bypassing the
+httpOnly/SameSite cookie protections the README advertises.
+
+Fix idea:
+- Gate the Authorization-header fallback behind a DEBUG/dev-only
+  environment flag so it's unavailable in the deployed/production
+  build, consistent with how docs_url is already disabled via the
+  DEBUG check in main.py.
+
+==================================================================
+Summary table
+------------------------------------------------------------------
+1. Wildcard CORS + SameSite=None cookie (CSRF)     -> SL-1
+2. EMI double-counted in health score               -> SL-2
+3. Profile fixed-expense fields unused in score     -> SL-2 / SL-3
+4. EMI create/delete debt inflation                 -> SL-2
+5. OCR fallback is a no-op                          -> SL-3
+6. Duplicate /logout route                          -> SL-3
+7. Bearer-token fallback live in prod               -> SL-3

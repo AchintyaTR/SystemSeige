@@ -1,0 +1,170 @@
+ClearFinance (System Siege PS-002) — Bug Writeup, Round 2
+Repo: https://github.com/AchintyaTR/SystemSeige
+(Follow-up after Round 1 fixes: CORS wildcard, EMI double-counting,
+debt-inflation, OCR no-op, duplicate logout, and Bearer-fallback
+issues have all been verified as resolved.)
+==================================================================
+
+BUG 8: Real admin credentials leaked in the public .env.example
+------------------------------------------------------------------
+Severity: SL-1 / SL-2 (real credential exposure — severity depends
+on whether the live deployment's actual .env reuses these values)
+Location: .env.example (tracked, public file)
+
+Description:
+.env.example is meant to be a placeholder template — every other
+line in it is clearly a placeholder (your_groq_api_key_here,
+your-super-secret-key-1234). However, appended to the bottom of the
+file (in corrupted UTF-16 encoding, but still fully readable byte
+by byte) are what appear to be real, specific values rather than
+placeholders:
+
+    DEFAULT_ADMIN_EMAIL=judge@systemsiege.com
+    DEFAULT_ADMIN_PASSWORD=judge123
+    JWT_SECRET=generate_a_random_secure_string_here_32_chars
+
+backend/main.py's create_default_admin() reads exactly these two
+env var names at server startup and, if set, bcrypt-hashes the
+password and inserts that user into the database automatically.
+This seeding mechanism itself is fine design (it's just a way to
+give judges a pre-made test account without registering). The bug
+is that the literal credential VALUES are sitting in a tracked,
+public file. If the real .env on Render uses the same
+email/password (plausible, given the naming clearly targets
+judges), anyone reading the public GitHub repo can log in as that
+account on the live deployment without ever running setup.
+
+Note: this was independently verified present as of the latest pull
+— the "database purge" fix (removing finance.db from git history)
+addressed a different, separate concern and does not touch this
+file.
+
+Fix idea:
+- Replace the real values in .env.example with obvious placeholders,
+  e.g.:
+    DEFAULT_ADMIN_EMAIL=admin@example.com
+    DEFAULT_ADMIN_PASSWORD=change_me_please
+    JWT_SECRET=replace_with_a_random_32_char_secret
+- Keep the actual judge credentials only in the real, untracked
+  .env file used by the Render deployment.
+- Since judge123 (or whatever the real value is) has now been
+  exposed in the public repo and in this conversation, rotate
+  DEFAULT_ADMIN_PASSWORD on the live deployment to something an
+  attacking team can't guess or reuse.
+- Also rotate JWT_SECRET on the live deployment if it was ever set
+  to the literal placeholder value shown above, since that value is
+  now public.
+
+
+BUG 9: .gitignore rule for *.db is corrupted (still present)
+------------------------------------------------------------------
+Severity: SL-3 (Low — currently no impact since nothing is
+tracked, but the safety net for accidental commits is broken)
+Location: .gitignore
+
+Description:
+The line intended to ignore SQLite database files is appended in
+UTF-16 encoding instead of plain text:
+    *\0.\0d\0b\0\r\0\n\0
+(hex-dump confirmed, byte-for-byte, still present as of the latest
+pull). Git parses .gitignore as raw bytes, so this pattern does not
+match a normal filename like finance.db. Right now this doesn't
+matter in practice because finance.db has never actually been
+committed to this repo (verified via full history search), and it's
+already excluded via Docker volume mounts. But the ignore rule
+itself is silently non-functional — if anyone ever runs the manual
+(non-Docker) setup and does a careless `git add .`, the database
+file (containing user emails, bcrypt hashes, and financial data)
+would NOT be blocked by this rule and could get committed and pushed
+to the public repo.
+
+Fix idea:
+- Rewrite the *.db line in .gitignore as plain ASCII/UTF-8 text,
+  ideally by retyping it directly in a plain-text editor rather than
+  appending via a Windows PowerShell redirect (`>>` / `Out-File`
+  without -Encoding UTF8 defaults to UTF-16LE on Windows, which is
+  almost certainly how this happened, and how the same corruption
+  showed up in .env.example).
+- Verify with: git check-ignore -v backend/finance.db
+  (should print a match; currently it likely won't).
+
+
+BUG 10: Rate limiter identifies clients by direct TCP peer, which
+is wrong behind Render's proxy
+------------------------------------------------------------------
+Severity: SL-2 (Moderate — can cause a shared/global rate limit
+that locks out unrelated users, i.e. a self-inflicted denial of
+service during the Live Game Window)
+Location: backend/main.py
+
+Description:
+    limiter = Limiter(key_func=get_remote_address)
+slowapi's get_remote_address reads request.client.host — the IP of
+whoever made the direct TCP connection to the FastAPI process. Now
+that the backend is hosted on Render, requests pass through Render's
+load balancer/reverse proxy before reaching the app, same as they
+did through the old Cloudflare tunnel. Unless X-Forwarded-For is
+explicitly trusted (e.g. via uvicorn --proxy-headers or a
+ProxyHeaders ASGI middleware), every visitor's request looks like it
+comes from the same proxy IP. That turns the "5/min login" and
+"3/min AI" limits into one bucket shared by ALL users hitting the
+live demo, not a per-user limit. During the Live Game Window, normal
+concurrent traffic (or a handful of requests from any one team)
+could trip the shared limit and lock every other team out of
+login/chat/loan-analysis simultaneously.
+
+This should be verified directly on the live Render URL: hit
+/api/auth/login with bad credentials 6 times in a row from one
+device, then immediately try logging in from a second device/network
+— if the second device also gets rate-limited, the bug is confirmed
+live.
+
+Fix idea:
+- Configure uvicorn/FastAPI to trust and parse X-Forwarded-For from
+  Render's proxy (e.g. via a ProxyHeaders middleware, or Starlette's
+  TrustedHostMiddleware combined with a custom key_func that reads
+  request.headers.get("X-Forwarded-For", "").split(",")[0] instead
+  of request.client.host).
+- Confirm Render's specific documented header name/behavior for the
+  originating client IP before wiring this up, since proxy header
+  conventions vary by host.
+
+
+BUG 11: Registration endpoint allows account enumeration
+------------------------------------------------------------------
+Severity: SL-3 (Low)
+Location: backend/routers/auth.py (register)
+
+Description:
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+This confirms to an unauthenticated caller whether a given email is
+already registered. Contrast with /api/auth/login, which correctly
+returns a generic "Invalid credentials" for both wrong-password and
+non-existent-account cases. Enumeration itself doesn't grant access
+to anything, but it's an easy, real finding for an attacking team.
+
+Fix idea:
+- Return a generic success-style response regardless of whether the
+  email exists (e.g. "If this email is available, a confirmation
+  step will follow" style messaging), or introduce email
+  verification so the enumeration signal is decoupled from account
+  creation.
+- Lower priority than Bugs 8–10; fix opportunistically.
+
+==================================================================
+Summary table
+------------------------------------------------------------------
+8.  Real admin credentials in public .env.example      -> SL-1/SL-2
+9.  Corrupted .gitignore *.db rule (still present)      -> SL-3
+10. Rate limiter broken behind Render's proxy           -> SL-2
+11. Registration email enumeration                      -> SL-3
+
+Resolved from Round 1 (verified in latest pull):
+- Wildcard CORS (*.vercel.app) + SameSite=None combo    -> fixed
+- EMI double-counted in health score                    -> fixed
+- Profile fixed-expense fields unused in score          -> fixed
+- EMI create/delete debt inflation                      -> fixed
+- OCR fallback no-op                                    -> fixed
+- Duplicate /logout route                               -> fixed
+- Bearer-token fallback gated behind DEBUG flag         -> fixed

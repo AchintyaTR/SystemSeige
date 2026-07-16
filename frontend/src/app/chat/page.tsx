@@ -29,10 +29,12 @@ export default function BoardChat() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [language, setLanguage] = useState("English");
+  const [selectedAdvisor, setSelectedAdvisor] = useState("General");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const languages = ["English", "Hindi", "Marathi", "Gujarati", "Bengali", "Tamil", "Telugu", "Spanish", "French"];
+  const advisors = ["General", "Loan", "Tax", "Investment"];
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -56,14 +58,14 @@ export default function BoardChat() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    const userMessage = { id: Date.now(), message: input, board_response: null, isNew: true };
+    const userMessage = { id: Date.now(), message: input, board_response: null, advisor_type: selectedAdvisor, isNew: true };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
 
     try {
-      const { data } = await api.post("/chat", { message: userMessage.message, language });
-      setMessages((prev) => prev.map(m => m.id === userMessage.id ? { ...data, isNew: true } : m));
+      const { data } = await api.post("/chat", { message: userMessage.message, language, advisor_type: selectedAdvisor });
+      setMessages((prev) => prev.map(m => m.id === userMessage.id ? { ...data, isNew: true, advisor_type: selectedAdvisor } : m));
     } catch (err) {
       console.error(err);
       // Remove the optimistic message on error, or show error state
@@ -82,6 +84,14 @@ export default function BoardChat() {
   };
 
 
+  const filteredMessages = messages.filter(msg => {
+    let boardRes = msg.board_response;
+    if (typeof boardRes === 'string') {
+      try { boardRes = JSON.parse(boardRes); } catch(e) {}
+    }
+    const msgAdvisor = msg.advisor_type || (boardRes && boardRes.advisor_type) || "General";
+    return msgAdvisor === selectedAdvisor;
+  });
 
   return (
     <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full p-4 h-[calc(100vh-4rem)]">
@@ -90,7 +100,7 @@ export default function BoardChat() {
           <h1 className="text-3xl font-bold">Personal Financial Advisor</h1>
           <p className="text-foreground/60 text-sm">Consult your personalized AI financial advisor.</p>
         </div>
-        {messages.length > 0 && (
+        {filteredMessages.length > 0 && (
           <button 
             onClick={handleClearChat}
             className="flex items-center gap-2 px-4 py-2 bg-danger/10 text-danger hover:bg-danger/20 rounded-xl transition-colors text-sm font-medium"
@@ -100,17 +110,35 @@ export default function BoardChat() {
         )}
       </div>
 
+      {/* Advisor Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar">
+        {advisors.map(adv => (
+          <button
+            key={adv}
+            onClick={() => setSelectedAdvisor(adv)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+              selectedAdvisor === adv 
+                ? "bg-primary text-white" 
+                : "bg-foreground/5 hover:bg-foreground/10 text-foreground/80"
+            }`}
+          >
+            {adv} Advisor
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 glass-panel rounded-2xl flex flex-col overflow-hidden border border-white/10">
         
         {/* Chat History */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
-          {messages.length === 0 && (
-            <div className="h-full flex items-center justify-center text-foreground/50 italic">
-              No chat history yet. Ask a question below to consult your advisor.
+          {filteredMessages.length === 0 && (
+            <div className="h-full flex flex-col items-center justify-center text-foreground/50 italic gap-4">
+              <Bot className="h-12 w-12 opacity-20" />
+              <span>No history with the {selectedAdvisor} Advisor yet. Ask a question below!</span>
             </div>
           )}
           
-          {messages.map((msg: any, idx) => (
+          {filteredMessages.map((msg: any, idx) => (
             <div key={msg.id || idx} className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
               {/* User Message */}
               <div className="flex items-start gap-4 justify-end">
@@ -159,7 +187,12 @@ export default function BoardChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
-              placeholder="Ask your advisor about debt, investing, tax strategies..."
+              placeholder={`Ask the ${selectedAdvisor} Advisor about ${
+                selectedAdvisor === 'Loan' ? 'managing debt...' :
+                selectedAdvisor === 'Tax' ? 'saving on taxes...' :
+                selectedAdvisor === 'Investment' ? 'growing wealth...' :
+                'your finances...'
+              }`}
               className="w-full bg-background border border-foreground/20 rounded-full py-4 pl-6 pr-44 text-foreground placeholder:text-foreground/50 focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
             />
             

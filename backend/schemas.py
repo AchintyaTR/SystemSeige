@@ -84,6 +84,7 @@ class LoanAnalysisResponse(BaseModel):
 class ChatRequestSchema(BaseSchema):
     message: str
     language: Optional[str] = None
+    advisor_type: Optional[str] = "General"
 
 class ChatHistoryResponse(BaseModel):
     id: str
