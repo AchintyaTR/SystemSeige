@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Search, Building2, Percent, Target, Info, ExternalLink, IndianRupee } from "lucide-react";
 import Link from "next/link";
@@ -14,6 +15,21 @@ interface BankRecommendation {
 }
 
 export default function LoanFinder() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await api.get("/profile");
+      } catch (err: any) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          router.push("/login");
+        }
+      }
+    };
+    checkAuth();
+  }, [router]);
+
   const [loanType, setLoanType] = useState("Home Loan");
   const [amount, setAmount] = useState<string>("500000");
   const [loading, setLoading] = useState(false);
