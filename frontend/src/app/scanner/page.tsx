@@ -141,19 +141,19 @@ export default function LoanScanner() {
               <div className="text-sm text-foreground/60 flex items-center gap-2">
                 <Info className="h-4 w-4" /> Principal
               </div>
-              <div className="text-2xl font-semibold">₹{result.principal?.toLocaleString()}</div>
+              <div className="text-2xl font-semibold">₹{result.principal?.toLocaleString('en-IN')}</div>
             </div>
             <div className="glass-panel p-6 rounded-xl space-y-2">
               <div className="text-sm text-foreground/60 flex items-center gap-2">
                 <Info className="h-4 w-4" /> Stated EMI
               </div>
-              <div className="text-2xl font-semibold">₹{result.stated_emi?.toLocaleString()}</div>
+              <div className="text-2xl font-semibold">₹{result.stated_emi?.toLocaleString('en-IN')}</div>
             </div>
             <div className="glass-panel p-6 rounded-xl space-y-2">
               <div className="text-sm text-foreground/60 flex items-center gap-2">
                 <Info className="h-4 w-4" /> Verified EMI
               </div>
-              <div className="text-2xl font-semibold">₹{result.verified_emi?.toLocaleString()}</div>
+              <div className="text-2xl font-semibold">₹{result.verified_emi?.toLocaleString('en-IN')}</div>
               {result.emi_deviation_pct > 0 && (
                 <div className="text-xs text-danger font-medium mt-1">
                   Deviation: {result.emi_deviation_pct.toFixed(2)}%

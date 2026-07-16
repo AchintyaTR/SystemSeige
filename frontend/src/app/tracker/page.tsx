@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Plus, Receipt, History, AlertCircle } from "lucide-react";
+import { Plus, Receipt, History, AlertCircle, Trash2 } from "lucide-react";
 
 export default function ExpenseTracker() {
   const router = useRouter();
@@ -16,7 +16,7 @@ export default function ExpenseTracker() {
   const [category, setCategory] = useState("Emergency");
   const [description, setDescription] = useState("");
 
-  const categories = ["Emergency", "Leisure", "Family", "Groceries", "Rent", "Utilities", "Other"];
+  const categories = ["Emergency", "Leisure", "Family", "Recurring Expense", "Utilities", "EMI", "Other"];
 
   useEffect(() => {
     fetchExpenses();
@@ -43,18 +43,28 @@ export default function ExpenseTracker() {
       setError("Please enter a valid positive amount.");
       return;
     }
-
     try {
-      const { data } = await api.post("/expenses", {
+      const payload: any = {
         amount: parseFloat(amount),
         category,
         description
-      });
+      };
+      
+      const { data } = await api.post("/expenses", payload);
       setExpenses([data, ...expenses]);
       setAmount("");
       setDescription("");
     } catch (err: any) {
       setError("Failed to add expense.");
+    }
+  };
+
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      await api.delete(`/expenses/${id}`);
+      setExpenses(expenses.filter(exp => exp.id !== id));
+    } catch (err) {
+      console.error("Failed to delete expense:", err);
     }
   };
 
@@ -152,8 +162,17 @@ export default function ExpenseTracker() {
                       <div className="text-sm text-foreground/60">{exp.description || "No description"}</div>
                       <div className="text-xs text-foreground/50 mt-1">{new Date(exp.date).toLocaleDateString()}</div>
                     </div>
-                    <div className="text-xl font-bold text-danger">
-                      -₹{exp.amount.toLocaleString()}
+                    <div className="flex items-center gap-4">
+                      <div className="text-xl font-bold text-danger">
+                        -₹{exp.amount.toLocaleString('en-IN')}
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteExpense(exp.id)}
+                        className="p-2 text-foreground/40 hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+                        title="Delete Expense"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
                 ))}

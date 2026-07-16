@@ -15,6 +15,31 @@ export default function GoalDetails({ params }: { params: Promise<{ id: string }
   const [goal, setGoal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [updateAmount, setUpdateAmount] = useState("");
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState("");
+
+  const handleUpdateProgress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdateError("");
+    if (!updateAmount || isNaN(parseFloat(updateAmount)) || parseFloat(updateAmount) <= 0) {
+      setUpdateError("Please enter a valid amount.");
+      return;
+    }
+    setUpdating(true);
+    try {
+      const newAmount = goal.current_amount + parseFloat(updateAmount);
+      const { data } = await api.put(`/goals/${goalId}`, {
+        current_amount: newAmount
+      });
+      setGoal(data);
+      setUpdateAmount("");
+    } catch (err: any) {
+      setUpdateError("Failed to update progress.");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   useEffect(() => {
     fetchGoal();
@@ -71,7 +96,7 @@ export default function GoalDetails({ params }: { params: Promise<{ id: string }
         <div className="space-y-2 mb-4">
           <div className="flex justify-between text-sm font-medium">
             <span className="text-foreground/60">Progress</span>
-            <span>₹{goal.current_amount.toLocaleString()} / ₹{goal.target_amount.toLocaleString()}</span>
+            <span>₹{goal.current_amount.toLocaleString('en-IN')} / ₹{goal.target_amount.toLocaleString('en-IN')}</span>
           </div>
           <div className="w-full bg-background rounded-full h-4 overflow-hidden border border-foreground/10">
             <div 
@@ -79,6 +104,30 @@ export default function GoalDetails({ params }: { params: Promise<{ id: string }
               style={{ width: `${progress}%` }}
             />
           </div>
+        </div>
+
+        {/* Update Progress Form */}
+        <div className="mt-8 p-6 bg-background/50 rounded-2xl border border-foreground/10">
+          <h4 className="font-bold mb-4">Log Savings</h4>
+          <form onSubmit={handleUpdateProgress} className="flex items-start gap-4">
+            <div className="flex-1 space-y-2">
+              <input 
+                type="number" 
+                value={updateAmount}
+                onChange={(e) => setUpdateAmount(e.target.value)}
+                placeholder="Amount to add (₹)"
+                className="w-full px-4 py-3 rounded-xl glass-input"
+              />
+              {updateError && <p className="text-danger text-sm">{updateError}</p>}
+            </div>
+            <button 
+              type="submit" 
+              disabled={updating}
+              className="bg-accent hover:bg-accent/90 text-white px-6 py-3 rounded-xl font-medium transition-all disabled:opacity-50"
+            >
+              {updating ? "Updating..." : "Add to Goal"}
+            </button>
+          </form>
         </div>
       </div>
 

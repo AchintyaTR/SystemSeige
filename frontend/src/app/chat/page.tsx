@@ -28,8 +28,11 @@ export default function BoardChat() {
   const router = useRouter();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
+  const [language, setLanguage] = useState("English");
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const languages = ["English", "Hindi", "Marathi", "Gujarati", "Bengali", "Tamil", "Telugu", "Spanish", "French"];
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -59,7 +62,7 @@ export default function BoardChat() {
     setLoading(true);
 
     try {
-      const { data } = await api.post("/chat", { message: userMessage.message });
+      const { data } = await api.post("/chat", { message: userMessage.message, language });
       setMessages((prev) => prev.map(m => m.id === userMessage.id ? { ...data, isNew: true } : m));
     } catch (err) {
       console.error(err);
@@ -138,8 +141,20 @@ export default function BoardChat() {
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
               placeholder="Ask your advisor about debt, investing, tax strategies..."
-              className="w-full bg-background border border-foreground/20 rounded-full py-4 pl-6 pr-16 text-foreground placeholder:text-foreground/50 focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
+              className="w-full bg-background border border-foreground/20 rounded-full py-4 pl-6 pr-44 text-foreground placeholder:text-foreground/50 focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
             />
+            
+            <div className="absolute right-16 flex items-center h-full py-2">
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                disabled={loading}
+                className="h-full bg-background/50 border border-foreground/10 text-sm rounded-xl px-3 outline-none focus:border-primary text-foreground/80 appearance-none disabled:opacity-50"
+              >
+                {languages.map(l => <option key={l} value={l} className="bg-background text-foreground">{l}</option>)}
+              </select>
+            </div>
+
             <button 
               type="submit"
               disabled={loading || !input.trim()}

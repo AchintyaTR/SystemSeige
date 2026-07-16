@@ -17,8 +17,7 @@ def register(request: Request, user: schemas.RegisterSchema, db: Session = Depen
     try:
         db_user = db.query(models.User).filter(models.User.email == user.email).first()
         if db_user:
-            # Generic message to prevent user enumeration
-            raise HTTPException(status_code=400, detail="Invalid request")
+            raise HTTPException(status_code=400, detail="Email already registered")
         
         hashed_password = auth.get_password_hash(user.password)
         new_user = models.User(email=user.email, password_hash=hashed_password)

@@ -28,7 +28,15 @@ class ProfileUpdateSchema(BaseSchema):
     savings: Optional[float] = Field(None, ge=0)
     stock_holdings_value: Optional[float] = Field(None, ge=0)
     average_return_pct: Optional[float] = Field(None)
+    emi_amount: Optional[float] = Field(None, ge=0)
     preferred_language: Optional[str] = None
+    
+    # Expenses
+    expense_rent: Optional[float] = Field(None, ge=0)
+    expense_food: Optional[float] = Field(None, ge=0)
+    expense_transport: Optional[float] = Field(None, ge=0)
+    expense_medical: Optional[float] = Field(None, ge=0)
+    expense_other: Optional[float] = Field(None, ge=0)
 
 class ProfileResponse(BaseModel):
     id: str
@@ -37,7 +45,15 @@ class ProfileResponse(BaseModel):
     savings: float
     stock_holdings_value: float
     average_return_pct: float
+    emi_amount: float
     financial_health_score: int
+    
+    # Expenses
+    expense_rent: float
+    expense_food: float
+    expense_transport: float
+    expense_medical: float
+    expense_other: float
 
 # Loan Analyzer Schemas
 class FeeFlagResponse(BaseModel):
@@ -67,6 +83,7 @@ class LoanAnalysisResponse(BaseModel):
 # Chat Schemas
 class ChatRequestSchema(BaseSchema):
     message: str
+    language: Optional[str] = None
 
 class ChatHistoryResponse(BaseModel):
     id: str
@@ -81,6 +98,7 @@ class ExpenseCreate(BaseSchema):
     category: str
     description: Optional[str] = None
     date: Optional[datetime] = None
+    loan_id: Optional[str] = None
 
 class ExpenseResponse(BaseModel):
     id: str
@@ -94,6 +112,11 @@ class GoalCreate(BaseSchema):
     name: str
     target_amount: float = Field(..., gt=0)
     current_amount: float = Field(0.0, ge=0)
+
+class GoalUpdate(BaseSchema):
+    name: Optional[str] = None
+    target_amount: Optional[float] = Field(None, gt=0)
+    current_amount: Optional[float] = Field(None, ge=0)
 
 class GoalResponse(BaseModel):
     id: str

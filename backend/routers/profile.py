@@ -10,14 +10,21 @@ from main import limiter
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 logger = logging.getLogger(__name__)
 
-def compute_health_score(income: float, debt: float, savings: float) -> int:
-    # A simple deterministic health score for demonstration
-    if income == 0:
+def compute_health_score(income: float, debt: float, savings: float, expenses: float, emi: float) -> int:
+    if income <= 0:
         return 0
-    debt_to_income = (debt / (income * 12)) if income > 0 else 1.0
-    savings_ratio = (savings / (income * 12)) if income > 0 else 0.0
+    total_outflow = expenses + emi
+    outflow_ratio = total_outflow / income
+    debt_ratio = (debt / (income * 12)) if income > 0 else 1.0
+    savings_ratio = savings / (income * 12) if income > 0 else 0.0
     
-    score = 100 - (debt_to_income * 50) + (savings_ratio * 50)
+    # Base score 100
+    # Penalty for high outflow (if outflow > 50%, start penalizing heavily)
+    outflow_penalty = max(0, (outflow_ratio - 0.5) * 100)
+    debt_penalty = min(50, debt_ratio * 50)
+    savings_bonus = min(20, savings_ratio * 50)
+    
+    score = 100 - outflow_penalty - debt_penalty + savings_bonus
     return max(0, min(100, int(score)))
 
 @router.get("", response_model=schemas.ProfileResponse)
@@ -28,6 +35,24 @@ def get_profile(request: Request, current_user: models.User = Depends(auth.get_c
         profile = db.query(models.FinancialProfile).filter(models.FinancialProfile.user_id == current_user.id).first()
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
+            
+        # Dynamically compute health score
+        import datetime
+        now = datetime.datetime.utcnow()
+
+        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
+        current_month_expenses = sum(e.amount for e in expenses if e.date.month == now.month and e.date.year == now.year)
+        
+        dynamic_score = compute_health_score(
+            profile.monthly_income, 
+            profile.total_debt, 
+            profile.savings, 
+            current_month_expenses, 
+            profile.emi_amount
+        )
+        
+        # We don't save to db here on GET to avoid overhead, just return dynamically
+        profile.financial_health_score = dynamic_score
         return profile
     except HTTPException:
         raise
@@ -54,12 +79,37 @@ def update_profile(request: Request, profile_data: schemas.ProfileUpdateSchema, 
             profile.stock_holdings_value = profile_data.stock_holdings_value
         if profile_data.average_return_pct is not None:
             profile.average_return_pct = profile_data.average_return_pct
+        if profile_data.emi_amount is not None:
+            profile.emi_amount = profile_data.emi_amount
+            
+        # Expenses
+        if profile_data.expense_rent is not None:
+            profile.expense_rent = profile_data.expense_rent
+        if profile_data.expense_food is not None:
+            profile.expense_food = profile_data.expense_food
+        if profile_data.expense_transport is not None:
+            profile.expense_transport = profile_data.expense_transport
+        if profile_data.expense_medical is not None:
+            profile.expense_medical = profile_data.expense_medical
+        if profile_data.expense_other is not None:
+            profile.expense_other = profile_data.expense_other
             
         if profile_data.preferred_language is not None:
             current_user.preferred_language = profile_data.preferred_language
             
         # Recompute score deterministically
-        profile.financial_health_score = compute_health_score(profile.monthly_income, profile.total_debt, profile.savings)
+        import datetime
+        now = datetime.datetime.utcnow()
+        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
+        current_month_expenses = sum(e.amount for e in expenses if e.date.month == now.month and e.date.year == now.year)
+        
+        profile.financial_health_score = compute_health_score(
+            profile.monthly_income, 
+            profile.total_debt, 
+            profile.savings, 
+            current_month_expenses, 
+            profile.emi_amount
+        )
         
         db.commit()
         db.refresh(profile)

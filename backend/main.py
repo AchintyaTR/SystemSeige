@@ -62,13 +62,13 @@ import models
 models.Base.metadata.create_all(bind=database.engine)
 
 # Include Routers
-from routers import auth, profile, loans, chat, expenses, goals, ongoing_loans
+from routers import auth, profile, loans, chat, expenses, goals, recommendation
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(chat.router)
 app.include_router(expenses.router)
 app.include_router(goals.router)
-app.include_router(ongoing_loans.router)
 app.include_router(loans.router)
+app.include_router(recommendation.router)
 
 # Added to trigger uvicorn reload after installing email-validator

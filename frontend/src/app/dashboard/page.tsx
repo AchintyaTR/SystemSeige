@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Wallet, CreditCard, PiggyBank, Activity, Save, TrendingUp } from "lucide-react";
 import { GoalsWidget } from "@/components/GoalsWidget";
-import { LoansWidget } from "@/components/LoansWidget";
+import { RecommendationWidget } from "@/components/RecommendationWidget";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [savings, setSavings] = useState("");
   const [stocks, setStocks] = useState("");
   const [returns, setReturns] = useState("");
+  const [emiAmount, setEmiAmount] = useState("");
   const [savingStatus, setSavingStatus] = useState("");
   const [monthExpense, setMonthExpense] = useState(0);
 
@@ -31,6 +32,7 @@ export default function Dashboard() {
         setSavings(data.savings?.toString() || "0");
         setStocks(data.stock_holdings_value?.toString() || "0");
         setReturns(data.average_return_pct?.toString() || "0");
+        setEmiAmount(data.emi_amount?.toString() || "0");
         
         // Fetch current month expenses
         try {
@@ -65,7 +67,8 @@ export default function Dashboard() {
         total_debt: parseFloat(debt),
         savings: parseFloat(savings),
         stock_holdings_value: parseFloat(stocks),
-        average_return_pct: parseFloat(returns)
+        average_return_pct: parseFloat(returns),
+        emi_amount: parseFloat(emiAmount)
       });
       setProfile(data);
       setSavingStatus("Saved successfully!");
@@ -116,12 +119,12 @@ export default function Dashboard() {
             
             <div className="w-full mt-8 p-4 bg-foreground/5 rounded-2xl border border-foreground/10 text-center">
               <div className="text-sm text-foreground/60 mb-1">Current Month Expenses</div>
-              <div className="text-3xl font-bold text-danger">₹{monthExpense.toLocaleString()}</div>
+              <div className="text-3xl font-bold text-danger">₹{monthExpense.toLocaleString('en-IN')}</div>
             </div>
           </div>
           
           <GoalsWidget />
-          <LoansWidget />
+          <RecommendationWidget />
         </div>
 
         {/* Right Col: Update Form */}
@@ -170,6 +173,19 @@ export default function Dashboard() {
                   type="number" 
                   value={savings}
                   onChange={(e) => setSavings(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl glass-input"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80">EMI Amount (₹)</label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-foreground/50" />
+                <input 
+                  type="number" 
+                  value={emiAmount}
+                  onChange={(e) => setEmiAmount(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 rounded-xl glass-input"
                 />
               </div>

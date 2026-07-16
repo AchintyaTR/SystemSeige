@@ -89,6 +89,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         
         SCHEMA:
         {{
+          "is_loan_document": "boolean (true if this looks like a loan agreement, promissory note, or mortgage, false otherwise)",
           "principal": "number",
           "annual_interest_rate_pct": "number",
           "tenure_months": "integer",
@@ -117,6 +118,9 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
             extracted_data = json.loads(response_text)
         except json.JSONDecodeError:
             raise HTTPException(status_code=500, detail="Failed to parse AI output")
+            
+        if not extracted_data.get("is_loan_document"):
+            raise HTTPException(status_code=400, detail="The uploaded document does not appear to be a loan agreement or financial contract.")
             
         principal = extracted_data.get("principal") or 0.0
         annual_rate = extracted_data.get("annual_interest_rate_pct") or 0.0

@@ -31,6 +31,15 @@ class FinancialProfile(Base):
     stock_holdings_value = Column(Float, default=0.0)
     average_return_pct = Column(Float, default=0.0)
     financial_health_score = Column(Integer, default=0)
+    emi_amount = Column(Float, default=0.0)
+    last_emi_deduction_date = Column(DateTime, default=datetime.utcnow)
+    
+    # Monthly Expenses
+    expense_rent = Column(Float, default=0.0)
+    expense_food = Column(Float, default=0.0)
+    expense_transport = Column(Float, default=0.0)
+    expense_medical = Column(Float, default=0.0)
+    expense_other = Column(Float, default=0.0)
 
     user = relationship("User", back_populates="profile")
 

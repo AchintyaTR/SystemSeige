@@ -50,7 +50,7 @@ export function GoalsWidget() {
   };
 
   return (
-    <div className="glass-panel p-6 rounded-3xl h-full flex flex-col">
+    <div className="glass-panel p-6 rounded-3xl flex flex-col">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold flex items-center gap-2">
           <Target className="h-5 w-5 text-accent" /> Current Goals
@@ -102,7 +102,7 @@ export function GoalsWidget() {
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-semibold text-sm">{goal.name}</span>
                     <span className="text-xs font-medium text-foreground/60">
-                      ₹{goal.current_amount.toLocaleString()} / ₹{goal.target_amount.toLocaleString()}
+                      ₹{goal.current_amount.toLocaleString('en-IN')} / ₹{goal.target_amount.toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="w-full bg-background rounded-full h-2 overflow-hidden">

@@ -58,6 +58,36 @@ def get_goal(request: Request, goal_id: str, current_user: models.User = Depends
         logger.error(f"[ERROR] get_goal: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@router.put("/{goal_id}", response_model=schemas.GoalResponse)
+@limiter.limit("50/minute")
+def update_goal(request: Request, goal_id: str, goal_update: schemas.GoalUpdate, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    try:
+        goal = db.query(models.FinancialGoal).filter(
+            models.FinancialGoal.id == goal_id,
+            models.FinancialGoal.user_id == current_user.id
+        ).first()
+        if not goal:
+            raise HTTPException(status_code=404, detail="Goal not found")
+            
+        update_data = goal_update.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(goal, key, value)
+            
+        # Optional: check if goal met target
+        if goal.current_amount >= goal.target_amount:
+            goal.status = "completed"
+        elif goal.status == "completed" and goal.current_amount < goal.target_amount:
+            goal.status = "in_progress"
+            
+        db.commit()
+        db.refresh(goal)
+        return goal
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[ERROR] update_goal: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @router.post("/{goal_id}/advice", response_model=schemas.GoalResponse)
 @limiter.limit("10/minute")
 def generate_goal_advice(request: Request, goal_id: str, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
@@ -79,6 +109,7 @@ def generate_goal_advice(request: Request, goal_id: str, current_user: models.Us
             "savings": profile.savings if profile else 0,
             "stock_holdings_value": profile.stock_holdings_value if profile else 0,
             "average_return_pct": profile.average_return_pct if profile else 0,
+            "emi_amount": profile.emi_amount if profile else 0,
         }
         
         expense_summary = {}
@@ -86,7 +117,7 @@ def generate_goal_advice(request: Request, goal_id: str, current_user: models.Us
             expense_summary[exp.category] = expense_summary.get(exp.category, 0) + exp.amount
             
         prompt = f"""
-        You are a financial advisor. The user wants to reach a financial goal.
+        You are a Senior Wealth Manager and Financial Advisor. The user wants to reach a financial goal.
         Goal Name: {goal.name}
         Target Amount: ₹{goal.target_amount}
         Current Amount: ₹{goal.current_amount}
@@ -97,10 +128,16 @@ def generate_goal_advice(request: Request, goal_id: str, current_user: models.Us
         User's Expense Summary:
         {json.dumps(expense_summary, indent=2)}
         
-        Provide actionable, step-by-step advice on how to reach this goal.
+        Provide actionable, step-by-step advice on how to reach this goal. 
+        Apply the 50:30:20 budgeting rule (50% Needs, 30% Wants, 20% Savings/Investments) to their current expenses if relevant, 
+        and suggest specific Indian financial instruments (e.g., SIPs in Mutual Funds, FDs, PPF) to accelerate goal achievement.
+        
+        STRICT RULE: Expenses categorized as "Recurring Expense" or "EMI" are fixed, mandatory costs. You MUST NOT suggest reducing, cutting, or altering them when giving financial advice or suggesting ways to save money.
+
+        
         Respond ONLY with a JSON object in this exact schema:
         {{
-            "summary": "1-2 sentences summarizing the strategy",
+            "summary": "1-2 sentences summarizing the strategy using the 50:30:20 rule",
             "estimated_months": integer,
             "steps": [
                 {{"title": "Step 1", "description": "Actionable advice"}}
