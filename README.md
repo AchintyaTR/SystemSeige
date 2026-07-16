@@ -32,8 +32,8 @@ The easiest way to run the entire stack (Frontend + Backend + Databases) is usin
 
 ### Setup Instructions
 1. Open a terminal in the root directory of this project.
-2. Copy the environment variables template and **add your Gemini API Key**:
-   *(Rename `.env.example` to `.env` and fill in `GEMINI_API_KEY`)*
+2. Copy the environment variables template and **add your Groq API Key**:
+   *(Rename `.env.example` to `.env` and fill in `GROQ_API_KEY`)*
 3. Build and spin up the containers:
    ```bash
    docker-compose up -d --build
