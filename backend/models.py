@@ -109,6 +109,7 @@ class Expense(Base):
     category = Column(String, nullable=False) # e.g. Emergency, Leisure, Family, etc.
     description = Column(String, nullable=True)
     date = Column(DateTime, default=datetime.utcnow)
+    amount_applied_to_debt = Column(Float, default=0.0)
 
 class FinancialGoal(Base):
     __tablename__ = "financial_goals"

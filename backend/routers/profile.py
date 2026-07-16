@@ -10,10 +10,10 @@ from main import limiter
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 logger = logging.getLogger(__name__)
 
-def compute_health_score(income: float, debt: float, savings: float, expenses: float, emi: float) -> int:
+def compute_health_score(income: float, debt: float, savings: float, expenses: float, emi: float, fixed_expenses: float = 0.0) -> int:
     if income <= 0:
         return 0
-    total_outflow = expenses + emi
+    total_outflow = fixed_expenses + expenses + emi
     outflow_ratio = total_outflow / income
     debt_ratio = (debt / (income * 12)) if income > 0 else 1.0
     savings_ratio = savings / (income * 12) if income > 0 else 0.0
@@ -41,14 +41,17 @@ def get_profile(request: Request, current_user: models.User = Depends(auth.get_c
         now = datetime.datetime.utcnow()
 
         expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
-        current_month_expenses = sum(e.amount for e in expenses if e.date.month == now.month and e.date.year == now.year)
+        current_month_expenses = sum(e.amount for e in expenses if e.date.month == now.month and e.date.year == now.year and e.category != "EMI")
+        
+        fixed_expenses = (profile.expense_rent or 0.0) + (profile.expense_food or 0.0) + (profile.expense_transport or 0.0) + (profile.expense_medical or 0.0) + (profile.expense_other or 0.0)
         
         dynamic_score = compute_health_score(
             profile.monthly_income, 
             profile.total_debt, 
             profile.savings, 
             current_month_expenses, 
-            profile.emi_amount
+            profile.emi_amount,
+            fixed_expenses
         )
         
         # We don't save to db here on GET to avoid overhead, just return dynamically
@@ -101,14 +104,17 @@ def update_profile(request: Request, profile_data: schemas.ProfileUpdateSchema, 
         import datetime
         now = datetime.datetime.utcnow()
         expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
-        current_month_expenses = sum(e.amount for e in expenses if e.date.month == now.month and e.date.year == now.year)
+        current_month_expenses = sum(e.amount for e in expenses if e.date.month == now.month and e.date.year == now.year and e.category != "EMI")
+        
+        fixed_expenses = (profile.expense_rent or 0.0) + (profile.expense_food or 0.0) + (profile.expense_transport or 0.0) + (profile.expense_medical or 0.0) + (profile.expense_other or 0.0)
         
         profile.financial_health_score = compute_health_score(
             profile.monthly_income, 
             profile.total_debt, 
             profile.savings, 
             current_month_expenses, 
-            profile.emi_amount
+            profile.emi_amount,
+            fixed_expenses
         )
         
         db.commit()

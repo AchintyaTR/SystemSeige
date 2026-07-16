@@ -50,8 +50,10 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     if len(text.strip()) < 50: # fallback to OCR
         logger.info("Falling back to OCR")
         try:
-            # Simple OCR fallback (requires poppler/tesseract installed on host, catching errors if not)
-            pass 
+            import pdf2image
+            images = pdf2image.convert_from_bytes(file_bytes)
+            for img in images:
+                text += pytesseract.image_to_string(img) + "\n"
         except Exception as e:
             logger.error(f"OCR error: {e}")
             

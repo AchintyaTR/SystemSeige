@@ -22,18 +22,19 @@ def register(request: Request, user: schemas.RegisterSchema, db: Session = Depen
         hashed_password = auth.get_password_hash(user.password)
         new_user = models.User(email=user.email, password_hash=hashed_password)
         db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+        db.flush() # Flush to get new_user.id without committing
         
         # Create empty profile
         profile = models.FinancialProfile(user_id=new_user.id)
         db.add(profile)
-        db.commit()
+        
+        db.commit() # Single commit for atomicity
         
         return {"message": "User registered successfully"}
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         logger.error(f"[ERROR] register: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
@@ -80,12 +81,3 @@ def logout(response: Response):
     )
     return {"message": "Logout successful"}
 
-@router.post("/logout")
-def logout(response: Response):
-    response.delete_cookie(
-        key="access_token",
-        httponly=True,
-        samesite="none",
-        secure=True
-    )
-    return {"message": "Logout successful"}

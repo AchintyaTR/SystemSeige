@@ -27,7 +27,9 @@ def create_expense(request: Request, expense_data: schemas.ExpenseCreate, curren
         if expense.category == "EMI":
             profile = db.query(models.FinancialProfile).filter(models.FinancialProfile.user_id == current_user.id).first()
             if profile and profile.total_debt is not None:
+                applied = min(profile.total_debt, expense.amount) if profile.total_debt > 0 else 0.0
                 profile.total_debt = max(0.0, profile.total_debt - expense.amount)
+                expense.amount_applied_to_debt = applied
             
         db.add(expense)
         db.commit()
@@ -63,7 +65,7 @@ def delete_expense(request: Request, expense_id: str, current_user: models.User 
         if expense.category == "EMI":
             profile = db.query(models.FinancialProfile).filter(models.FinancialProfile.user_id == current_user.id).first()
             if profile and profile.total_debt is not None:
-                profile.total_debt += expense.amount
+                profile.total_debt += (expense.amount_applied_to_debt or 0.0)
             
         db.delete(expense)
         db.commit()
