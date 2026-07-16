@@ -1,0 +1,155 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
+import { Send, User, Bot, Loader2 } from "lucide-react";
+
+const TypingEffect = ({ text }: { text: string }) => {
+  const [displayedText, setDisplayedText] = useState("");
+  useEffect(() => {
+    let index = 0;
+    setDisplayedText("");
+    const interval = setInterval(() => {
+      if (index >= text.length) {
+        clearInterval(interval);
+        return;
+      }
+      const charToAppend = text[index];
+      setDisplayedText((prev) => prev + charToAppend);
+      index++;
+    }, 15);
+    return () => clearInterval(interval);
+  }, [text]);
+  return <>{displayedText}</>;
+};
+
+export default function BoardChat() {
+  const router = useRouter();
+  const [messages, setMessages] = useState<any[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const { data } = await api.get("/chat/history");
+        setMessages(data);
+      } catch (err: any) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          router.push("/login");
+        }
+      }
+    };
+    fetchHistory();
+  }, [router]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage = { id: Date.now(), message: input, board_response: null, isNew: true };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const { data } = await api.post("/chat", { message: userMessage.message });
+      setMessages((prev) => prev.map(m => m.id === userMessage.id ? { ...data, isNew: true } : m));
+    } catch (err) {
+      console.error(err);
+      // Remove the optimistic message on error, or show error state
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  return (
+    <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full p-4 h-[calc(100vh-4rem)]">
+      <div className="mb-4">
+        <h1 className="text-3xl font-bold">Personal Financial Advisor</h1>
+        <p className="text-foreground/60 text-sm">Consult your personalized AI financial advisor.</p>
+      </div>
+
+      <div className="flex-1 glass-panel rounded-2xl flex flex-col overflow-hidden border border-white/10">
+        
+        {/* Chat History */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+          {messages.length === 0 && (
+            <div className="h-full flex items-center justify-center text-foreground/50 italic">
+              No chat history yet. Ask a question below to consult your advisor.
+            </div>
+          )}
+          
+          {messages.map((msg: any, idx) => (
+            <div key={msg.id || idx} className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+              {/* User Message */}
+              <div className="flex items-start gap-4 justify-end">
+                <div className="bg-primary/20 text-foreground p-4 rounded-2xl rounded-tr-none max-w-[80%]">
+                  {msg.message}
+                </div>
+                <div className="bg-primary p-2 rounded-full mt-1">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+              </div>
+
+              {/* Board Response */}
+              {msg.board_response ? (
+                <div className="flex items-start gap-4">
+                  <div className="bg-foreground/10 p-2 rounded-full mt-1">
+                    <Bot className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div className="p-4 rounded-2xl border border-primary/20 bg-primary/5 text-foreground">
+                      <p className="text-sm leading-relaxed opacity-90 whitespace-pre-wrap">
+                        {msg.isNew ? <TypingEffect text={msg.board_response.advice} /> : msg.board_response.advice}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-4">
+                  <div className="bg-foreground/10 p-2 rounded-full mt-1">
+                    <Bot className="h-5 w-5 text-white animate-pulse" />
+                  </div>
+                  <div className="bg-foreground/5 p-4 rounded-2xl rounded-tl-none animate-pulse text-foreground/60">
+                    Your advisor is analyzing your question...
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 bg-foreground/5 border-t border-foreground/10">
+          <form onSubmit={handleSend} className="relative flex items-center">
+            <input 
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={loading}
+              placeholder="Ask your advisor about debt, investing, tax strategies..."
+              className="w-full bg-background border border-foreground/20 rounded-full py-4 pl-6 pr-16 text-foreground placeholder:text-foreground/50 focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
+            />
+            <button 
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="absolute right-2 p-3 bg-primary hover:bg-primary/90 rounded-full text-white transition-all disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
