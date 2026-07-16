@@ -76,8 +76,16 @@ export default function BoardChat() {
 
   const handleClearChat = async () => {
     try {
-      await api.delete("/chat/history");
-      setMessages([]);
+      await api.delete(`/chat/history?advisor_type=${selectedAdvisor}`);
+      // Only remove messages for the currently selected advisor
+      setMessages(prev => prev.filter(msg => {
+        let boardRes = msg.board_response;
+        if (typeof boardRes === 'string') {
+          try { boardRes = JSON.parse(boardRes); } catch(e) {}
+        }
+        const msgAdvisor = msg.advisor_type || (boardRes && boardRes.advisor_type) || "General";
+        return msgAdvisor !== selectedAdvisor;
+      }));
     } catch (err) {
       console.error("Failed to clear chat:", err);
     }

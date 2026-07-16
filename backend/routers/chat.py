@@ -137,9 +137,19 @@ def get_chat_history(request: Request, current_user: models.User = Depends(auth.
 
 @router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("10/minute")
-def clear_chat_history(request: Request, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+def clear_chat_history(request: Request, advisor_type: str = "General", current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     try:
-        db.query(models.ChatHistory).filter(models.ChatHistory.user_id == current_user.id).delete()
+        history = db.query(models.ChatHistory).filter(models.ChatHistory.user_id == current_user.id).all()
+        for h in history:
+            board_res = h.board_response
+            if isinstance(board_res, dict) and board_res.get("advisor_type", "General") == advisor_type:
+                db.delete(h)
+            elif isinstance(board_res, str):
+                try:
+                    parsed = json.loads(board_res)
+                    if isinstance(parsed, dict) and parsed.get("advisor_type", "General") == advisor_type:
+                        db.delete(h)
+                except: pass
         db.commit()
     except Exception as e:
         db.rollback()
