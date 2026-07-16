@@ -13,7 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path="../.env")
 
-SECRET_KEY = os.getenv("JWT_SECRET", "super_secret_key_32_chars_long_minimum")
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET environment variable must be set - refusing to start with an insecure default.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
