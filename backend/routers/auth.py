@@ -59,7 +59,8 @@ def login(request: Request, response: Response, user: schemas.LoginSchema, db: S
             value=access_token,
             httponly=True,
             max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-            samesite="lax"
+            samesite="none",
+            secure=True
         )
         
         return {"message": "Login successful"}
@@ -74,7 +75,8 @@ def logout(response: Response):
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        samesite="lax"
+        samesite="none",
+        secure=True
     )
     return {"message": "Logout successful"}
 
@@ -83,6 +85,7 @@ def logout(response: Response):
     response.delete_cookie(
         key="access_token",
         httponly=True,
-        samesite="lax"
+        samesite="none",
+        secure=True
     )
     return {"message": "Logout successful"}
