@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Send, User, Bot, Loader2 } from "lucide-react";
+import { Send, User, Bot, Loader2, Trash2 } from "lucide-react";
 
 const TypingEffect = ({ text }: { text: string }) => {
   const [displayedText, setDisplayedText] = useState("");
@@ -72,13 +72,32 @@ export default function BoardChat() {
     }
   };
 
+  const handleClearChat = async () => {
+    try {
+      await api.delete("/chat/history");
+      setMessages([]);
+    } catch (err) {
+      console.error("Failed to clear chat:", err);
+    }
+  };
+
 
 
   return (
     <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full p-4 h-[calc(100vh-4rem)]">
-      <div className="mb-4">
-        <h1 className="text-3xl font-bold">Personal Financial Advisor</h1>
-        <p className="text-foreground/60 text-sm">Consult your personalized AI financial advisor.</p>
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Personal Financial Advisor</h1>
+          <p className="text-foreground/60 text-sm">Consult your personalized AI financial advisor.</p>
+        </div>
+        {messages.length > 0 && (
+          <button 
+            onClick={handleClearChat}
+            className="flex items-center gap-2 px-4 py-2 bg-danger/10 text-danger hover:bg-danger/20 rounded-xl transition-colors text-sm font-medium"
+          >
+            <Trash2 className="h-4 w-4" /> Clear Chat
+          </button>
+        )}
       </div>
 
       <div className="flex-1 glass-panel rounded-2xl flex flex-col overflow-hidden border border-white/10">

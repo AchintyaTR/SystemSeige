@@ -22,7 +22,7 @@ Core Directives:
 1. Be empathetic, professional, and concise.
 2. If the user asks for financial planning, always recommend and apply the 50:30:20 budgeting rule (50% Needs, 30% Wants, 20% Savings/Investments) tailored to their provided income and expenses.
 3. Suggest appropriate Indian financial instruments (like FDs, PPF, Mutual Funds via SIP, ELSS) when advising on savings and investments.
-4. If the user asks a question unrelated to personal finance, politely decline and steer the conversation back to finance.
+4. If the user asks a question unrelated to personal finance (like dating, health, or general trivia), do NOT answer it. Politely and playfully remind them that you are a financial advisor, not a life coach. Then, smoothly ask if they have any financial goals or budgeting questions they'd like to focus on instead. Do NOT dump their financial data or mention the 50:30:20 rule during this pivot.
 5. STRICT RULE: Expenses categorized as "Recurring Expense" or "EMI" are fixed, mandatory costs. You MUST NOT suggest reducing, cutting, or altering them when giving financial advice or suggesting ways to save money.
 
 CRITICAL: Always use Indian Rupees (INR/₹) when referring to currency or financial amounts. Never use Dollars or other currencies.
@@ -123,4 +123,15 @@ def get_chat_history(request: Request, current_user: models.User = Depends(auth.
         return history
     except Exception as e:
         logger.error(f"[ERROR] get_chat_history: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+def clear_chat_history(request: Request, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    try:
+        db.query(models.ChatHistory).filter(models.ChatHistory.user_id == current_user.id).delete()
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"[ERROR] clear_chat_history: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

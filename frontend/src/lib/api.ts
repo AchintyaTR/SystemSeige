@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // The backend runs on port 8000
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+// Always use relative path so Next.js rewrites can proxy it to the backend!
+const API_BASE_URL = '/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

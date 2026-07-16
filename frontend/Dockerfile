@@ -10,6 +10,8 @@ RUN npm ci
 COPY . .
 
 # Build Next.js application
+ARG NEXT_INTERNAL_BACKEND_URL
+ENV NEXT_INTERNAL_BACKEND_URL=$NEXT_INTERNAL_BACKEND_URL
 RUN npm run build
 
 # Expose port 3000
