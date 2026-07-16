@@ -17,7 +17,7 @@ def register(request: Request, user: schemas.RegisterSchema, db: Session = Depen
     try:
         db_user = db.query(models.User).filter(models.User.email == user.email).first()
         if db_user:
-            raise HTTPException(status_code=400, detail="Email already registered")
+            return {"message": "Registration processed successfully"}
         
         hashed_password = auth.get_password_hash(user.password)
         new_user = models.User(email=user.email, password_hash=hashed_password)
@@ -30,7 +30,7 @@ def register(request: Request, user: schemas.RegisterSchema, db: Session = Depen
         
         db.commit() # Single commit for atomicity
         
-        return {"message": "User registered successfully"}
+        return {"message": "Registration processed successfully"}
     except HTTPException:
         raise
     except Exception as e:
