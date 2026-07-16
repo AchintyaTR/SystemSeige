@@ -13,9 +13,13 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path="../.env")
 
+import secrets
+import logging
+
 SECRET_KEY = os.getenv("JWT_SECRET")
 if not SECRET_KEY:
-    raise RuntimeError("JWT_SECRET environment variable must be set - refusing to start with an insecure default.")
+    logging.warning("JWT_SECRET environment variable is missing! Generating a temporary random secret key for this session. (All users will be logged out if the server restarts).")
+    SECRET_KEY = secrets.token_hex(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
