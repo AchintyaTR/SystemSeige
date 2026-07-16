@@ -5,7 +5,7 @@ ClearFinance is an AI-powered financial wellness and loan transparency platform 
 This platform is **Secure by Default**, strictly adhering to the 12 non-negotiable security rules defined in the `agent_security_instructions.md`.
 
 ## 🚀 Live Demo
-**Access the fully functional live application here:** [https://ciao-penalties-bolt-elvis.trycloudflare.com](https://ciao-penalties-bolt-elvis.trycloudflare.com)
+**Access the fully functional live application here:** [https://sys-rose.vercel.app/](https://sys-rose.vercel.app/)
 *(Note: If the link is down, follow the local setup instructions below.)*
 
 ## Key Features
