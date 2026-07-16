@@ -11,3 +11,11 @@ export const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Interceptor: forces Axios to prepend /api if a leading slash is accidentally used
+api.interceptors.request.use((config) => {
+  if (config.url && config.url.startsWith('/') && !config.url.startsWith('/api')) {
+    config.url = `/api${config.url}`;
+  }
+  return config;
+});

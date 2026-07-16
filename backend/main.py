@@ -93,7 +93,7 @@ def create_default_admin():
 create_default_admin()
 
 # Include Routers
-from routers import auth, profile, loans, chat, expenses, goals, recommendation
+from routers import auth, profile, loans, chat, expenses, goals, recommendation, loan_finder
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(chat.router)
@@ -101,5 +101,6 @@ app.include_router(expenses.router)
 app.include_router(goals.router)
 app.include_router(loans.router)
 app.include_router(recommendation.router)
+app.include_router(loan_finder.router)
 
 # Added to trigger uvicorn reload after installing email-validator
