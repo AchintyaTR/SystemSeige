@@ -7,11 +7,7 @@ This platform is **Secure by Default**, strictly adhering to the 12 non-negotiab
 ## 🚀 Live Demo
 **Access the fully functional live application here:** [https://sys-rose.vercel.app/](https://sys-rose.vercel.app/)
 
-**Judge Login Credentials:**
-- **Email:** `judge@systemsiege.com`
-- **Password:** `judge123`
-
-*(Note: If the link is down, follow the local setup instructions below.)*
+*(Note: The live demo uses local databases and might be down. For full evaluation, follow the secure local setup instructions below.)*
 
 ## Key Features
 - **Multi-Domain Board Chat**: A unified chat interface where a conversational AI acts as your personal financial advisor. Features a seamless history clearing option and intelligent, natural conversation flows that prioritize your financial wellness without feeling robotic.
@@ -41,8 +37,8 @@ The easiest way to run the entire stack (Frontend + Backend + Databases) is usin
 
 ### Setup Instructions
 1. Open a terminal in the root directory of this project.
-2. Copy the environment variables template and **add your Groq API Key**:
-   *(Rename `.env.example` to `.env` and fill in `GROQ_API_KEY`)*
+2. Copy the environment variables template and **configure your keys**:
+   *(Rename `.env.example` to `.env`. Add your `GROQ_API_KEY` and set your desired `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD`)*
 3. Build and spin up the containers:
    ```bash
    docker-compose up -d --build

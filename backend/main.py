@@ -56,10 +56,37 @@ app.add_middleware(
 async def health_check(request: Request):
     return {"status": "ok", "message": "ClearFinance API is running securely."}
 
-# DB Init
 import database
 import models
 models.Base.metadata.create_all(bind=database.engine)
+
+def create_default_admin():
+    email = os.getenv("DEFAULT_ADMIN_EMAIL")
+    password = os.getenv("DEFAULT_ADMIN_PASSWORD")
+    if email and password:
+        from database import SessionLocal
+        from passlib.context import CryptContext
+        
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        db = SessionLocal()
+        try:
+            db_user = db.query(models.User).filter(models.User.email == email).first()
+            if not db_user:
+                hashed_password = pwd_context.hash(password)
+                new_user = models.User(email=email, password_hash=hashed_password)
+                db.add(new_user)
+                db.flush()
+                profile = models.FinancialProfile(user_id=new_user.id)
+                db.add(profile)
+                db.commit()
+                print(f"Created default admin user: {email}")
+        except Exception as e:
+            db.rollback()
+            print(f"Failed to create default admin user: {e}")
+        finally:
+            db.close()
+
+create_default_admin()
 
 # Include Routers
 from routers import auth, profile, loans, chat, expenses, goals, recommendation
