@@ -4,15 +4,17 @@ ClearFinance is an AI-powered financial wellness and loan transparency platform 
 
 This platform is **Secure by Default**, strictly adhering to the 12 non-negotiable security rules defined in the `agent_security_instructions.md`.
 
-## Features
-- **Multi-Domain Board Chat**: A unified chat interface where a board of 6 financial advisors (Debt, Savings, Investment, Insurance, Tax, Legal) collaborate to provide holistic advice based on the user's financial profile.
-- **Predatory Loan Scanner**: Upload a PDF loan agreement. The system extracts the terms, mathematically verifies the EMI and fees, and computes a **Deterministic Fairness Score**.
-- **Multilingual Support**: Automatic language detection and translation using `langdetect`.
-- **Explainable AI**: Every fairness score comes with an explainability envelope, detailing exactly *why* the score was given based on raw math.
+## Key Features
+- **Multi-Domain Board Chat**: A unified chat interface where a board of 6 financial advisors (Debt, Savings, Investment, Insurance, Tax, Legal) collaborate to provide holistic advice based on your financial profile.
+- **Predatory Loan Scanner**: Upload a PDF loan agreement. The system extracts the terms, mathematically verifies the EMI and fees, and computes a **Deterministic Fairness Score** with explainable AI.
+- **Unified Debt & EMI Tracking**: Track your total debt seamlessly. Manually log your monthly EMI payments in the tracker, and watch your total debt automatically decrease!
+- **Dynamic Financial Health Score**: A mathematically rigorous health score that dynamically updates based on your monthly income versus your combined tracker expenses and fixed EMI obligations.
+- **AI Goal Generator**: Set financial goals (like buying a car or saving for a house) and the AI will generate step-by-step actionable advice tailored to your income and fixed expenses.
+- **Multilingual Support**: Automatic language detection and translation using `langdetect` built into the AI responses.
 
 ## Architecture & Security Highlights
 - **Backend:** FastAPI (Python) with SQLAlchemy and SQLite.
-- **Frontend:** Next.js (React).
+- **Frontend:** Next.js (React) with TailwindCSS.
 - **Rate Limiting:** `slowapi` applied to all routes (5/min for auth, 3/min for AI, 100/min for general).
 - **Input Validation:** Strict Pydantic models with `extra='forbid'` to block mass assignment attacks.
 - **Auth:** JWT using `httpOnly` cookies, access token valid for 15 minutes.
@@ -21,44 +23,40 @@ This platform is **Secure by Default**, strictly adhering to the 12 non-negotiab
 - **Security Headers:** Custom middleware implementing `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `X-XSS-Protection`.
 - **Secrets Management:** `.env` is properly ignored in `.gitignore`, and no secrets are hardcoded.
 
-## Local Setup
+## How To Access The Website (Local Setup)
+
+The easiest way to run the entire stack (Frontend + Backend + Databases) is using Docker Compose.
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
 
-### Backend Setup
-1. Open a terminal in the root directory.
-2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   .\venv\Scripts\Activate.ps1
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r backend\requirements.txt
-   ```
-4. Copy the environment variables template and **add your Gemini API Key**:
+### Setup Instructions
+1. Open a terminal in the root directory of this project.
+2. Copy the environment variables template and **add your Gemini API Key**:
    *(Rename `.env.example` to `.env` and fill in `GEMINI_API_KEY`)*
-5. Start the backend server:
+3. Build and spin up the containers:
    ```bash
-   cd backend
-   uvicorn main:app --reload
+   docker-compose up -d --build
    ```
-   The backend API will run on `http://localhost:8000`.
+4. **Access the Website:**
+   - **Frontend UI:** Open your browser and go to `http://localhost:3000`
+   - **Backend API Docs:** Open your browser and go to `http://localhost:8000/docs`
 
-### Frontend Setup
-1. Open a new terminal in the root directory.
-2. Navigate to the frontend directory:
+5. **To stop the app:**
    ```bash
-   cd frontend
+   docker-compose down
    ```
-3. Start the Next.js development server:
-   ```bash
-   npm run dev
-   ```
-   The frontend will run on `http://localhost:3000`.
 
-## Known Limitations / Clarifications
-- **Database / Redis:** To adhere to the strict "KEEP IT LOCALLY" and "NO DOCKER" requirements for the hackathon, we used **SQLite** (instead of PostgreSQL) and **In-Memory Rate Limiting** (instead of Redis). This perfectly mimics the requested architecture's security properties without requiring external service installations.
-- **OCR Fallback:** The `pytesseract` fallback requires Tesseract-OCR installed on your local host system to function on scanned PDFs. Standard text PDFs will process via `pdfplumber` natively.
+## Manual Setup (Without Docker)
+If you prefer not to use Docker, you can run the components manually:
+
+### Backend
+1. Create and activate a Python virtual environment.
+2. `pip install -r backend/requirements.txt`
+3. Make sure you have Tesseract-OCR and poppler-utils installed on your host machine for the PDF scanner.
+4. `cd backend && uvicorn main:app --reload` (Runs on port 8000)
+
+### Frontend
+1. Ensure Node.js 18+ is installed.
+2. `cd frontend && npm install`
+3. `npm run dev` (Runs on port 3000)
