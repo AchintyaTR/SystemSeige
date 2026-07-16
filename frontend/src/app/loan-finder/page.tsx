@@ -69,12 +69,12 @@ export default function LoanFinder() {
                 onChange={(e) => setLoanType(e.target.value)}
                 className="w-full p-3 rounded-xl glass-input transition-colors appearance-none"
               >
-                <option value="Home Loan">Home Loan</option>
-                <option value="Auto Loan">Auto Loan</option>
-                <option value="Personal Loan">Personal Loan</option>
-                <option value="Education Loan">Education Loan</option>
-                <option value="Business Loan">Business Loan</option>
-                <option value="Gold Loan">Gold Loan</option>
+                <option className="bg-background text-foreground" value="Home Loan">Home Loan</option>
+                <option className="bg-background text-foreground" value="Auto Loan">Auto Loan</option>
+                <option className="bg-background text-foreground" value="Personal Loan">Personal Loan</option>
+                <option className="bg-background text-foreground" value="Education Loan">Education Loan</option>
+                <option className="bg-background text-foreground" value="Business Loan">Business Loan</option>
+                <option className="bg-background text-foreground" value="Gold Loan">Gold Loan</option>
               </select>
             </div>
 
