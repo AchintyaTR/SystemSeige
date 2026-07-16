@@ -6,6 +6,11 @@ This platform is **Secure by Default**, strictly adhering to the 12 non-negotiab
 
 ## 🚀 Live Demo
 **Access the fully functional live application here:** [https://sys-rose.vercel.app/](https://sys-rose.vercel.app/)
+
+**Judge Login Credentials:**
+- **Email:** `judge@systemsiege.com`
+- **Password:** `judge123`
+
 *(Note: If the link is down, follow the local setup instructions below.)*
 
 ## Key Features
