@@ -24,6 +24,8 @@ This platform is **Secure by Default**, strictly adhering to the 12 non-negotiab
 - **Input Validation:** Strict Pydantic models with `extra='forbid'` to block mass assignment attacks.
 - **Auth:** JWT using `httpOnly` cookies, access token valid for 15 minutes.
 - **IDOR Prevention:** All database queries are strictly scoped using `user_id = current_user.id`.
+- **Atomic Transactions & DB Rollbacks:** All critical database modifications (like user registration) are wrapped in atomic transactions with explicit `db.rollback()` safety nets. This guarantees the database never reaches an inconsistent or locked state, even during high-concurrency brute-force or load-testing attacks (e.g., Locust).
+- **Comprehensive Vulnerability Patching:** Protected against CSRF via wildcard origin removal, proxy rate limit bypasses (using `X-Forwarded-For`), debt inflation exploits, and account enumeration, ensuring the system is completely hardened.
 - **No Raw SQL:** SQLAlchemy ORM is used exclusively.
 - **Security Headers:** Custom middleware implementing `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `X-XSS-Protection`.
 - **Secrets Management:** `.env` is properly ignored in `.gitignore`, and no secrets are hardcoded.
