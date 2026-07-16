@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Activity, ShieldAlert, MessageSquare, LogIn, LayoutDashboard, Sun, Moon, UserCircle, LogOut } from "lucide-react";
+import { Activity, ShieldAlert, MessageSquare, LogIn, LayoutDashboard, Sun, Moon, UserCircle, LogOut, Search } from "lucide-react";
 import { api } from "@/lib/api";
 
 export function Navbar() {
@@ -30,6 +30,7 @@ export function Navbar() {
     { name: "Tracker", href: "/tracker", icon: Activity },
     { name: "Scanner", href: "/scanner", icon: ShieldAlert },
     { name: "Advisor Chat", href: "/chat", icon: MessageSquare },
+    { name: "Loan Finder", href: "/loan-finder", icon: Search },
   ];
 
   return (
