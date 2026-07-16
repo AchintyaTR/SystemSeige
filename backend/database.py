@@ -9,6 +9,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./finance.db")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# SQLAlchemy/psycopg2 does not recognize the 'pgbouncer=true' option in the URL
+if DATABASE_URL and "pgbouncer=true" in DATABASE_URL.lower():
+    DATABASE_URL = DATABASE_URL.replace("?pgbouncer=true", "").replace("&pgbouncer=true", "")
+
 # SQLite needs connect_args={"check_same_thread": False}
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
