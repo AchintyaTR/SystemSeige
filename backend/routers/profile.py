@@ -15,16 +15,25 @@ def compute_health_score(income: float, debt: float, savings: float, expenses: f
         return 0
     total_outflow = fixed_expenses + expenses + emi
     outflow_ratio = total_outflow / income
-    debt_ratio = (debt / (income * 12)) if income > 0 else 1.0
-    savings_ratio = savings / (income * 12) if income > 0 else 0.0
     
-    # Base score 100
-    # Penalty for high outflow (if outflow > 50%, start penalizing heavily)
-    outflow_penalty = max(0, (outflow_ratio - 0.5) * 100)
-    debt_penalty = min(50, debt_ratio * 50)
-    savings_bonus = min(20, savings_ratio * 50)
+    # 1. Savings Score (0 to 30 points)
+    # Ideally savings >= 3x monthly income (30 points)
+    savings_months = savings / income
+    savings_score = min(30.0, (savings_months / 3.0) * 30.0)
     
-    score = 100 - outflow_penalty - debt_penalty + savings_bonus
+    # 2. Debt Score (0 to 30 points)
+    # Ideally debt == 0 (30 points). If debt >= 12x monthly income, 0 points.
+    debt_months = debt / income
+    debt_score = max(0.0, 30.0 - (debt_months / 12.0) * 30.0)
+    
+    # 3. Outflow Score (0 to 40 points)
+    # Ideally outflow <= 50% of income (40 points). If outflow >= 100%, 0 points.
+    if outflow_ratio <= 0.5:
+        outflow_score = 40.0
+    else:
+        outflow_score = max(0.0, 40.0 - ((outflow_ratio - 0.5) / 0.5) * 40.0)
+        
+    score = savings_score + debt_score + outflow_score
     return max(0, min(100, int(score)))
 
 @router.get("", response_model=schemas.ProfileResponse)
