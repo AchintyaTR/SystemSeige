@@ -4,8 +4,12 @@ ClearFinance is an AI-powered financial wellness and loan transparency platform 
 
 This platform is **Secure by Default**, strictly adhering to the 12 non-negotiable security rules defined in the `agent_security_instructions.md`.
 
+## 🚀 Live Demo
+**Access the fully functional live application here:** [https://ciao-penalties-bolt-elvis.trycloudflare.com](https://ciao-penalties-bolt-elvis.trycloudflare.com)
+*(Note: If the link is down, follow the local setup instructions below.)*
+
 ## Key Features
-- **Multi-Domain Board Chat**: A unified chat interface where a board of 6 financial advisors (Debt, Savings, Investment, Insurance, Tax, Legal) collaborate to provide holistic advice based on your financial profile.
+- **Multi-Domain Board Chat**: A unified chat interface where a conversational AI acts as your personal financial advisor. Features a seamless history clearing option and intelligent, natural conversation flows that prioritize your financial wellness without feeling robotic.
 - **Predatory Loan Scanner**: Upload a PDF loan agreement. The system extracts the terms, mathematically verifies the EMI and fees, and computes a **Deterministic Fairness Score** with explainable AI.
 - **Unified Debt & EMI Tracking**: Track your total debt seamlessly. Manually log your monthly EMI payments in the tracker, and watch your total debt automatically decrease!
 - **Dynamic Financial Health Score**: A mathematically rigorous health score that dynamically updates based on your monthly income versus your combined tracker expenses and fixed EMI obligations.
