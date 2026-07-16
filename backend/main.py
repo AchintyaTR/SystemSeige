@@ -65,14 +65,13 @@ def create_default_admin():
     password = os.getenv("DEFAULT_ADMIN_PASSWORD")
     if email and password:
         from database import SessionLocal
-        from passlib.context import CryptContext
+        import auth
         
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
         db = SessionLocal()
         try:
             db_user = db.query(models.User).filter(models.User.email == email).first()
             if not db_user:
-                hashed_password = pwd_context.hash(password)
+                hashed_password = auth.get_password_hash(password)
                 new_user = models.User(email=email, password_hash=hashed_password)
                 db.add(new_user)
                 db.flush()
