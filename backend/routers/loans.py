@@ -29,7 +29,7 @@ TYPICAL_FEE_RANGES_PCT = {
 }
 
 def verify_emi(principal: float, annual_rate: float, tenure_months: int) -> float:
-    if not principal or not annual_rate or not tenure_months:
+    if not principal or not tenure_months or tenure_months <= 0:
         return 0.0
     r = (annual_rate / 12) / 100
     if r == 0:
