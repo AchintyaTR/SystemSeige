@@ -92,6 +92,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         SCHEMA:
         {{
           "is_loan_document": "boolean (true if this looks like a loan agreement, promissory note, or mortgage, false otherwise)",
+          "document_language": "string (the primary language of the document, e.g. 'English', 'Hindi', 'Spanish')",
           "principal": "number",
           "annual_interest_rate_pct": "number",
           "tenure_days": "integer (total duration of the loan in days. Convert months to days if necessary (1 month = 30 days))",
@@ -134,6 +135,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         if not extracted_data.get("is_loan_document"):
             raise HTTPException(status_code=400, detail="The uploaded document does not appear to be a loan agreement or financial contract.")
             
+        doc_language = extracted_data.get("document_language", "English")
         principal = extracted_data.get("principal") or 0.0
         annual_rate = extracted_data.get("annual_interest_rate_pct") or 0.0
         tenure_days = extracted_data.get("tenure_days") or 0
@@ -143,11 +145,9 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         
         # Math for Verified EMI / Repayment
         if tenure_days <= 30 and tenure_days > 0:
-            # Short term predatory loan (single bullet repayment usually)
             interest_for_days = principal * (annual_rate / 100) * (tenure_days / 365)
             verified_emi = principal + interest_for_days
         else:
-            # Standard EMI
             verified_emi = verify_emi(principal, annual_rate, tenure_months)
             
         emi_deviation_pct = 0.0
@@ -182,7 +182,6 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
                             severity="high" if excess > 1 else "medium"
                         ))
                 elif not typical and amount_pct > 2.0:
-                    # Unrecognized fee that is > 2% of principal
                     fee_penalty += min(20, amount_pct * 4)
                     fee_flags.append(models.FeeFlag(
                         fee_type=fee_type or "unknown_fee",
@@ -193,28 +192,37 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
                 pass
                 
         compliance_penalty = 0.0
-        # Predatory Loan Detection: Ultra short tenure or exorbitant fees
+        # Granular Predatory Loan Detection
         if tenure_days > 0 and tenure_days < 30:
-            compliance_penalty += 40  # Massive penalty for 7-day/15-day loans
-        if principal > 0 and (total_fee_amount / principal) > 0.10:
-            compliance_penalty += 40  # Massive penalty for > 10% upfront fees
+            # 1.5 points penalty per day short of 30 days (e.g. 7 days = 34.5 penalty)
+            compliance_penalty += (30 - tenure_days) * 1.5
+            
+        if principal > 0:
+            total_fee_pct = total_fee_amount / principal
+            if total_fee_pct > 0.05:
+                # 2 points penalty for every 1% above 5% upfront fees
+                excess_fee_pct = (total_fee_pct - 0.05) * 100
+                compliance_penalty += min(40, excess_fee_pct * 2)
         
         # Penalize for hidden/predatory clauses
         if predatory_clauses and len(predatory_clauses) > 0:
-            compliance_penalty += 50  # Massive penalty for hidden clauses
+            # 15 points per clause, up to max of 45
+            compliance_penalty += min(45, len(predatory_clauses) * 15)
             
-        # Composite Fairness Score
-        score = 100 - min(40, emi_deviation_pct * 2) - fee_penalty - compliance_penalty
+        # Composite Fairness Score (Starts at 100)
+        score = 100 - min(40, emi_deviation_pct * 1.5) - fee_penalty - compliance_penalty
         fairness_score = max(0.0, min(100.0, round(score, 1)))
         
         clauses_text = "\n".join([f"- {clause}" for clause in predatory_clauses])
         
         explanation_prompt = f"""
-        Write a concise, 2-to-3 sentence plain-language explanation of these loan findings for a consumer.
-        Translate this explanation to language code '{lang}'.
+        Write a highly analytical, 3-sentence explanation of these loan findings for a consumer.
+        Translate this explanation natively into '{doc_language}' (the language of the original document).
+        
         CRITICAL INSTRUCTIONS:
         1. DO NOT include any conversational filler like "Here is an explanation...". Start immediately with the explanation itself.
         2. If 'Predatory Clauses Found' is not empty, you MUST explicitly warn the user about exactly why the loan is dangerous based on those clauses (e.g. balloon payments, hidden tricks).
+        3. Discuss the numerical fairness score and any exorbitant fees or short tenures.
         
         DATA:
         Fairness Score: {fairness_score}/100
