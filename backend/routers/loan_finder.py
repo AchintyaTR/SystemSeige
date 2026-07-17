@@ -79,7 +79,7 @@ def find_top_loans(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Find me the top 10 banks for a {payload.loan_type}."}
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             response_format={"type": "json_object"},
         )
         
