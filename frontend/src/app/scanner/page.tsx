@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { UploadCloud, FileText, AlertTriangle, ShieldCheck, Info } from "lucide-react";
 
 export default function LoanScanner() {
   const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await api.get("/profile");
+      } catch (err: any) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          router.push("/login");
+        }
+      }
+    };
+    checkAuth();
+  }, [router]);
+
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
