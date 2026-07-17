@@ -203,8 +203,8 @@ async def analyze_loan(
         
         # Penalize for hidden/predatory clauses
         if predatory_clauses and len(predatory_clauses) > 0:
-            # 15 points per clause, up to max of 45
-            compliance_penalty += min(45, len(predatory_clauses) * 15)
+            # Predatory clauses are extremely dangerous. Penalize heavily (60 points per clause)
+            compliance_penalty += len(predatory_clauses) * 60
             
         # Composite Fairness Score (Starts at 100)
         score = 100 - min(40, emi_deviation_pct * 1.5) - fee_penalty - compliance_penalty
