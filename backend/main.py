@@ -46,11 +46,13 @@ origins = [
 ]
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
-    origins.append(frontend_url)
+    # Remove trailing slash if present
+    origins.append(frontend_url.rstrip("/"))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
