@@ -120,7 +120,16 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         try:
             extracted_data = json.loads(response_text)
         except json.JSONDecodeError:
-            raise HTTPException(status_code=500, detail="Failed to parse AI output")
+            # Fallback: try to extract JSON from the text if it contains extra text
+            import re
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                try:
+                    extracted_data = json.loads(json_match.group(0))
+                except json.JSONDecodeError:
+                    raise HTTPException(status_code=500, detail="Failed to parse AI output: Invalid JSON format.")
+            else:
+                raise HTTPException(status_code=500, detail="Failed to parse AI output: No JSON found.")
             
         if not extracted_data.get("is_loan_document"):
             raise HTTPException(status_code=400, detail="The uploaded document does not appear to be a loan agreement or financial contract.")
