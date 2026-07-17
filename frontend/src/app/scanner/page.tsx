@@ -22,6 +22,7 @@ export default function LoanScanner() {
   }, [router]);
 
   const [file, setFile] = useState<File | null>(null);
+  const [targetLanguage, setTargetLanguage] = useState("English");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -52,6 +53,7 @@ export default function LoanScanner() {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("target_language", targetLanguage);
 
     try {
       const { data } = await api.post("/loans/analyze", formData, {
@@ -97,8 +99,25 @@ export default function LoanScanner() {
             />
           </label>
 
+          <div className="flex flex-col items-center gap-2 mt-4">
+            <span className="text-sm text-foreground/60">Explanation Language</span>
+            <select
+              value={targetLanguage}
+              onChange={(e) => setTargetLanguage(e.target.value)}
+              className="bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2 rounded-xl text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary appearance-none text-center cursor-pointer min-w-[150px]"
+            >
+              <option value="English" className="bg-background text-foreground">English</option>
+              <option value="Hindi" className="bg-background text-foreground">Hindi</option>
+              <option value="Spanish" className="bg-background text-foreground">Spanish</option>
+              <option value="French" className="bg-background text-foreground">French</option>
+              <option value="German" className="bg-background text-foreground">German</option>
+              <option value="Tamil" className="bg-background text-foreground">Tamil</option>
+              <option value="Telugu" className="bg-background text-foreground">Telugu</option>
+            </select>
+          </div>
+
           {file && (
-            <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg w-full max-w-md">
+            <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg w-full max-w-md mt-4">
               <FileText className="h-6 w-6 text-primary" />
               <div className="flex-1 truncate text-sm">{file.name}</div>
               <button 

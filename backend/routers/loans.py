@@ -6,7 +6,7 @@ import pdfplumber
 import pytesseract
 from PIL import Image
 from io import BytesIO
-from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from database import get_db
 import models
@@ -61,7 +61,13 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
 
 @router.post("/analyze", response_model=schemas.LoanAnalysisResponse)
 @limiter.limit("3/minute")
-async def analyze_loan(request: Request, file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+async def analyze_loan(
+    request: Request, 
+    file: UploadFile = File(...), 
+    target_language: str = Form("English"),
+    current_user: models.User = Depends(auth.get_current_user), 
+    db: Session = Depends(get_db)
+):
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
@@ -74,13 +80,6 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         if not extracted_text:
             raise HTTPException(status_code=400, detail="Could not extract text from document")
             
-        # Optional: Language Detection (For explanation later)
-        # We process in English internally
-        try:
-            lang = detect(extracted_text)
-        except:
-            lang = "en"
-            
         # LLM Extraction
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         prompt = f"""
@@ -92,7 +91,6 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         SCHEMA:
         {{
           "is_loan_document": "boolean (true if this looks like a loan agreement, promissory note, or mortgage, false otherwise)",
-          "document_language": "string (the primary language of the document, e.g. 'English', 'Hindi', 'Spanish')",
           "principal": "number",
           "annual_interest_rate_pct": "number",
           "tenure_days": "integer (total duration of the loan in days. Convert months to days if necessary (1 month = 30 days))",
@@ -135,7 +133,6 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         if not extracted_data.get("is_loan_document"):
             raise HTTPException(status_code=400, detail="The uploaded document does not appear to be a loan agreement or financial contract.")
             
-        doc_language = extracted_data.get("document_language", "English")
         principal = extracted_data.get("principal") or 0.0
         annual_rate = extracted_data.get("annual_interest_rate_pct") or 0.0
         tenure_days = extracted_data.get("tenure_days") or 0
@@ -217,7 +214,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         
         explanation_prompt = f"""
         Write a highly analytical, 3-sentence explanation of these loan findings for a consumer.
-        Translate this explanation natively into '{doc_language}' (the language of the original document).
+        Translate this explanation natively into '{target_language}'.
         
         CRITICAL INSTRUCTIONS:
         1. DO NOT include any conversational filler like "Here is an explanation...". Start immediately with the explanation itself.
