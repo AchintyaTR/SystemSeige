@@ -157,14 +157,13 @@ export default function LoanScanner() {
               </div>
 
               <div className="flex flex-col items-center justify-center p-6 bg-black/40 rounded-full w-48 h-48 border-4 border-white/10 shadow-2xl">
-                <span className="text-sm text-foreground/60 font-medium uppercase tracking-wider mb-1">Fairness Score</span>
-                <span className={`text-6xl font-extrabold ${
+                <span className="text-sm text-foreground/60 font-medium uppercase tracking-wider mb-1">Fairness</span>
+                <span className={`text-3xl font-extrabold ${
                   result.fairness_score >= 80 ? "text-success" : 
                   result.fairness_score >= 50 ? "text-warning" : "text-danger"
                 }`}>
-                  {result.fairness_score}
+                  {result.fairness_score >= 80 ? "HIGH" : result.fairness_score >= 50 ? "MODERATE" : "LOW"}
                 </span>
-                <span className="text-sm text-foreground/50">/ 100</span>
               </div>
             </div>
           </div>
