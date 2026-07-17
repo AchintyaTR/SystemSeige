@@ -95,8 +95,9 @@ async def analyze_loan(
           "annual_interest_rate_pct": "number",
           "tenure_days": "integer (total duration of the loan in days. Convert months to days if necessary (1 month = 30 days))",
           "stated_repayment_amount": "number | null (the stated EMI per month, OR the total repayment amount if it is a single-repayment short-term loan)",
-          "fees": [{{"type": "string (e.g. processing_fee, late_payment_fee, etc)", "amount": "number", "is_percentage": "boolean"}}],
-          "predatory_clauses": ["string (extract any deceptive, hidden, or highly predatory clauses found, such as unreasonable penalties, balloon payments, or clauses preventing principal reduction)"],
+          "fees": [{{"type": "string", "amount": "number", "is_percentage": "boolean"}}],
+          "predatory_clauses": ["string (ONLY extract highly unusual, deceptive, hidden, or astronomically punitive clauses. Do NOT extract standard boilerplate legal clauses like standard default acceleration upon default, standard late fees, or standard credit reporting)"],
+          "is_loan_document": "boolean",
           "extraction_confidence": "number (0-1)"
         }}
         
