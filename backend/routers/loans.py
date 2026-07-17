@@ -94,9 +94,9 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
           "is_loan_document": "boolean (true if this looks like a loan agreement, promissory note, or mortgage, false otherwise)",
           "principal": "number",
           "annual_interest_rate_pct": "number",
-          "tenure_months": "integer",
-          "stated_emi": "number | null",
-          "fees": [{{"type": "string (e.g. processing_fee, prepayment_penalty, foreclosure_charge, late_payment_fee)", "amount": "number", "is_percentage": "boolean"}}],
+          "tenure_days": "integer (total duration of the loan in days. Convert months to days if necessary (1 month = 30 days))",
+          "stated_repayment_amount": "number | null (the stated EMI per month, OR the total repayment amount if it is a single-repayment short-term loan)",
+          "fees": [{{"type": "string (e.g. processing_fee, late_payment_fee, etc)", "amount": "number", "is_percentage": "boolean"}}],
           "extraction_confidence": "number (0-1)"
         }}
         
@@ -120,7 +120,6 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         try:
             extracted_data = json.loads(response_text)
         except json.JSONDecodeError:
-            # Fallback: try to extract JSON from the text if it contains extra text
             import re
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
@@ -136,10 +135,19 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
             
         principal = extracted_data.get("principal") or 0.0
         annual_rate = extracted_data.get("annual_interest_rate_pct") or 0.0
-        tenure_months = extracted_data.get("tenure_months") or 0
-        stated_emi = extracted_data.get("stated_emi")
+        tenure_days = extracted_data.get("tenure_days") or 0
+        tenure_months = max(0, int(tenure_days / 30))
+        stated_emi = extracted_data.get("stated_repayment_amount")
         
-        verified_emi = verify_emi(principal, annual_rate, tenure_months)
+        # Math for Verified EMI / Repayment
+        if tenure_days <= 30 and tenure_days > 0:
+            # Short term predatory loan (single bullet repayment usually)
+            interest_for_days = principal * (annual_rate / 100) * (tenure_days / 365)
+            verified_emi = principal + interest_for_days
+        else:
+            # Standard EMI
+            verified_emi = verify_emi(principal, annual_rate, tenure_months)
+            
         emi_deviation_pct = 0.0
         if stated_emi and verified_emi > 0:
             emi_deviation_pct = abs(stated_emi - verified_emi) / verified_emi * 100
@@ -147,11 +155,16 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         # Fee Deviation Scoring
         fee_penalty = 0.0
         fee_flags = []
+        total_fee_amount = 0.0
         for fee in extracted_data.get("fees", []):
             try:
                 amt = float(fee.get("amount", 0))
                 is_pct = fee.get("is_percentage", False)
                 amount_pct = amt if is_pct else (amt / principal * 100 if principal > 0 else 0)
+                if not is_pct and principal > 0:
+                    total_fee_amount += amt
+                elif is_pct and principal > 0:
+                    total_fee_amount += principal * (amt / 100)
                 
                 fee_type = fee.get("type", "").lower()
                 typical = TYPICAL_FEE_RANGES_PCT.get(fee_type)
@@ -166,10 +179,23 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
                             found_pct=round(amount_pct, 2),
                             severity="high" if excess > 1 else "medium"
                         ))
+                elif not typical and amount_pct > 2.0:
+                    # Unrecognized fee that is > 2% of principal
+                    fee_penalty += min(20, amount_pct * 4)
+                    fee_flags.append(models.FeeFlag(
+                        fee_type=fee_type or "unknown_fee",
+                        found_pct=round(amount_pct, 2),
+                        severity="high"
+                    ))
             except:
                 pass
                 
-        compliance_penalty = 0.0 # Placeholder for compliance engine
+        compliance_penalty = 0.0
+        # Predatory Loan Detection: Ultra short tenure or exorbitant fees
+        if tenure_days > 0 and tenure_days < 30:
+            compliance_penalty += 40  # Massive penalty for 7-day/15-day loans
+        if principal > 0 and (total_fee_amount / principal) > 0.10:
+            compliance_penalty += 40  # Massive penalty for > 10% upfront fees
         
         # Composite Fairness Score
         score = 100 - min(40, emi_deviation_pct * 2) - fee_penalty - compliance_penalty
@@ -178,6 +204,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         explanation_prompt = f"""
         Write a concise, 2-sentence plain-language explanation of these loan findings for a consumer.
         Translate this explanation to language code '{lang}'.
+        CRITICAL: DO NOT include any conversational filler like "Here is a 2-sentence explanation...". Start immediately with the explanation itself.
         DO NOT alter any of these numbers:
         Fairness Score: {fairness_score}/100
         Verified EMI: {verified_emi}
@@ -189,6 +216,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
                 {"role": "user", "content": explanation_prompt}
             ],
             model="llama-3.3-70b-versatile",
+            temperature=0.0,
         )
         explanation = explanation_resp.choices[0].message.content.strip()
         
