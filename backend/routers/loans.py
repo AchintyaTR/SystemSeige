@@ -220,16 +220,17 @@ async def analyze_loan(
         
         CRITICAL INSTRUCTIONS:
         1. DO NOT include any conversational filler like "Here is an explanation...". Start immediately with the explanation itself.
-        2. If 'Predatory Clauses Found' is not empty, you MUST explicitly warn the user about exactly why the loan is dangerous based on those clauses (e.g. balloon payments, hidden tricks).
-        3. Discuss the numerical fairness score and any exorbitant fees or short tenures.
+        2. Keep it exactly 2-3 sentences. Make it extremely punchy, direct, and strictly to the point. Avoid vague or wordy phrasing.
+        3. DO NOT mention the "fairness score" or state the numerical score anywhere in your response, as the user can already see the score visually on their screen.
+        4. If there are predatory clauses, you MUST explicitly explain why they are dangerous.
         
-        DATA:
-        Fairness Score: {fairness_score}/100
-        Verified EMI: {verified_emi}
-        Stated EMI: {stated_emi}
-        EMI Deviation: {emi_deviation_pct}%
-        Predatory Clauses Found:
-        {clauses_text if clauses_text else "None"}
+        Here are the metrics for this loan:
+        - Fairness Score: {fairness_score}/100 (DO NOT MENTION THIS IN OUTPUT)
+        - Principal: {principal}
+        - Verified EMI: {verified_emi}
+        - Stated EMI: {stated_emi}
+        - Fee Deviation Penalty: {fee_penalty}
+        - Predatory Clauses Detected: {clauses_text if predatory_clauses else 'None'}
         """
         explanation_resp = client.chat.completions.create(
             messages=[
