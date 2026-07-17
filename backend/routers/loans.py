@@ -108,7 +108,7 @@ async def analyze_loan(
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             response_format={"type": "json_object"},
             temperature=0.0,
         )
@@ -236,7 +236,7 @@ async def analyze_loan(
             messages=[
                 {"role": "user", "content": explanation_prompt}
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             temperature=0.0,
         )
         explanation = explanation_resp.choices[0].message.content.strip()
