@@ -214,7 +214,8 @@ async def analyze_loan(
         
         explanation_prompt = f"""
         Write a highly analytical, 3-sentence explanation of these loan findings for a consumer.
-        Translate this explanation natively into '{target_language}'.
+        The final output MUST be written ENTIRELY in this language: {target_language}.
+        Do NOT output the explanation in English first and then translate it. Output ONLY the {target_language} version.
         
         CRITICAL INSTRUCTIONS:
         1. DO NOT include any conversational filler like "Here is an explanation...". Start immediately with the explanation itself.
