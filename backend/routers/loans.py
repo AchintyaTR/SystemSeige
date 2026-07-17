@@ -97,6 +97,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
           "tenure_days": "integer (total duration of the loan in days. Convert months to days if necessary (1 month = 30 days))",
           "stated_repayment_amount": "number | null (the stated EMI per month, OR the total repayment amount if it is a single-repayment short-term loan)",
           "fees": [{{"type": "string (e.g. processing_fee, late_payment_fee, etc)", "amount": "number", "is_percentage": "boolean"}}],
+          "predatory_clauses": ["string (extract any deceptive, hidden, or highly predatory clauses found, such as unreasonable penalties, balloon payments, or clauses preventing principal reduction)"],
           "extraction_confidence": "number (0-1)"
         }}
         
@@ -138,6 +139,7 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         tenure_days = extracted_data.get("tenure_days") or 0
         tenure_months = max(0, int(tenure_days / 30))
         stated_emi = extracted_data.get("stated_repayment_amount")
+        predatory_clauses = extracted_data.get("predatory_clauses", [])
         
         # Math for Verified EMI / Repayment
         if tenure_days <= 30 and tenure_days > 0:
@@ -197,19 +199,30 @@ async def analyze_loan(request: Request, file: UploadFile = File(...), current_u
         if principal > 0 and (total_fee_amount / principal) > 0.10:
             compliance_penalty += 40  # Massive penalty for > 10% upfront fees
         
+        # Penalize for hidden/predatory clauses
+        if predatory_clauses and len(predatory_clauses) > 0:
+            compliance_penalty += 50  # Massive penalty for hidden clauses
+            
         # Composite Fairness Score
         score = 100 - min(40, emi_deviation_pct * 2) - fee_penalty - compliance_penalty
         fairness_score = max(0.0, min(100.0, round(score, 1)))
         
+        clauses_text = "\n".join([f"- {clause}" for clause in predatory_clauses])
+        
         explanation_prompt = f"""
-        Write a concise, 2-sentence plain-language explanation of these loan findings for a consumer.
+        Write a concise, 2-to-3 sentence plain-language explanation of these loan findings for a consumer.
         Translate this explanation to language code '{lang}'.
-        CRITICAL: DO NOT include any conversational filler like "Here is a 2-sentence explanation...". Start immediately with the explanation itself.
-        DO NOT alter any of these numbers:
+        CRITICAL INSTRUCTIONS:
+        1. DO NOT include any conversational filler like "Here is an explanation...". Start immediately with the explanation itself.
+        2. If 'Predatory Clauses Found' is not empty, you MUST explicitly warn the user about exactly why the loan is dangerous based on those clauses (e.g. balloon payments, hidden tricks).
+        
+        DATA:
         Fairness Score: {fairness_score}/100
         Verified EMI: {verified_emi}
         Stated EMI: {stated_emi}
         EMI Deviation: {emi_deviation_pct}%
+        Predatory Clauses Found:
+        {clauses_text if clauses_text else "None"}
         """
         explanation_resp = client.chat.completions.create(
             messages=[
