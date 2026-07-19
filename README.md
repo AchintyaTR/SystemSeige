@@ -1,6 +1,8 @@
 # ClearFinance (System Siege PS-002)
 
-ClearFinance is an AI-powered financial wellness and loan transparency platform built for the System Siege hackathon.
+ClearFinance is an AI-powered financial wellness and loan transparency platform. It was built during a 24-hour hackathon, **System Siege**, where it placed in the **top 10 out of ~80 participants**. 
+
+🏆 **Hackathon Link:** [System Siege on Unstop](https://unstop.com/p/system-siege-amrita-vishwa-vidyapeetham-avv-chennai-1712187?lb=b9YMb8pl)
 
 This platform is **Secure by Default**, strictly adhering to the 12 non-negotiable security rules defined in the `agent_security_instructions.md`.
 
