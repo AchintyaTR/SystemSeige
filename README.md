@@ -4,8 +4,6 @@ ClearFinance is an AI-powered financial wellness and loan transparency platform.
 
 🏆 **Hackathon Link:** [System Siege on Unstop](https://unstop.com/p/system-siege-amrita-vishwa-vidyapeetham-avv-chennai-1712187?lb=b9YMb8pl)
 
-This platform is **Secure by Default**, strictly adhering to the 12 non-negotiable security rules defined in the `agent_security_instructions.md`.
-
 ## 🚀 Live Demo
 **Access the fully functional live application here:** [https://sys-rose.vercel.app/](https://sys-rose.vercel.app/)
 
